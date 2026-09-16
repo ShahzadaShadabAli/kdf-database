@@ -1,7 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { dbConnect } from "@/lib/mongodb";
-import User from "@/models/User";
+import { listUsers } from "@/lib/db";
 import { Topbar } from "@/components/Topbar";
 import Link from "next/link";
 
@@ -9,11 +8,7 @@ export default async function AdminUsersPage({ searchParams }) {
   const session = await getServerSession(authOptions);
   const created = searchParams?.created;
 
-  await dbConnect();
-  const users = await User.find({})
-    .select("username displayName role office createdAt")
-    .sort({ createdAt: -1 })
-    .lean();
+  const users = await listUsers();
 
   return (
     <>

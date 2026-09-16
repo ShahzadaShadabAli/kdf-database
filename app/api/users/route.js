@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import bcrypt from "bcryptjs";
 import { authOptions } from "@/lib/auth";
-import { dbConnect } from "@/lib/mongodb";
-import User from "@/models/User";
+import { DbError, createUser, listUsers } from "@/lib/db";
 import { userCreateSchema } from "@/lib/validation";
 
 export async function POST(req) {
@@ -22,30 +21,22 @@ export async function POST(req) {
       );
     }
     const data = parsed.data;
-
-    await dbConnect();
-
     const username = data.username.toLowerCase();
-    const existing = await User.findOne({ username });
-    if (existing) {
-      return NextResponse.json({ error: "That username is already taken." }, { status: 409 });
-    }
 
-    const passwordHash = await bcrypt.hash(data.password, 10);
-
-    const created = await User.create({
+    await createUser({
       username,
-      passwordHash,
+      passwordHash: await bcrypt.hash(data.password, 10),
       role: data.role,
       displayName: data.displayName,
       office: data.office || undefined,
+      createdAt: new Date(),
     });
 
-    return NextResponse.json(
-      { username: created.username, role: created.role },
-      { status: 201 }
-    );
+    return NextResponse.json({ username, role: data.role }, { status: 201 });
   } catch (err) {
+    if (err instanceof DbError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     console.error("POST /api/users failed", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -58,13 +49,7 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    await dbConnect();
-    const users = await User.find({})
-      .select("username displayName role office createdAt")
-      .sort({ createdAt: -1 })
-      .lean();
-
-    return NextResponse.json({ users });
+    return NextResponse.json({ users: await listUsers() });
   } catch (err) {
     console.error("GET /api/users failed", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

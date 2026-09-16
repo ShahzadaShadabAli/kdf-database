@@ -9,14 +9,25 @@
 // "+ New User" screen inside the app itself, not by editing this script.
 require("dotenv").config({ path: ".env.local" });
 
-const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const { cert, initializeApp } = require("firebase-admin/app");
+const { getFirestore } = require("firebase-admin/firestore");
 
-const MONGODB_URI = process.env.MONGODB_URI;
-const { ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_DISPLAY_NAME } = process.env;
+const {
+  FIREBASE_PROJECT_ID,
+  FIREBASE_CLIENT_EMAIL,
+  FIREBASE_PRIVATE_KEY,
+  FIRESTORE_EMULATOR_HOST,
+  ADMIN_USERNAME,
+  ADMIN_PASSWORD,
+  ADMIN_DISPLAY_NAME,
+} = process.env;
 
-if (!MONGODB_URI) {
-  console.error("Missing MONGODB_URI. Set it in .env.local before running the seed script.");
+if (!FIREBASE_PROJECT_ID || (!FIRESTORE_EMULATOR_HOST && (!FIREBASE_CLIENT_EMAIL || !FIREBASE_PRIVATE_KEY))) {
+  console.error(
+    "Missing Firebase credentials. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and\n" +
+      "FIREBASE_PRIVATE_KEY in .env.local before running the seed script."
+  );
   process.exit(1);
 }
 
@@ -35,41 +46,35 @@ if (ADMIN_PASSWORD.length < 8) {
   process.exit(1);
 }
 
-const UserSchema = new mongoose.Schema({
-  username: { type: String, required: true, unique: true, lowercase: true, trim: true },
-  passwordHash: { type: String, required: true },
-  role: { type: String, required: true, enum: ["kdf", "swd", "admin"] },
-  displayName: { type: String, required: true },
-  office: { type: String },
-  createdAt: { type: Date, default: Date.now },
-});
-
-const User = mongoose.models.User || mongoose.model("User", UserSchema);
+const app = FIRESTORE_EMULATOR_HOST
+  ? initializeApp({ projectId: FIREBASE_PROJECT_ID })
+  : initializeApp({
+      credential: cert({
+        projectId: FIREBASE_PROJECT_ID,
+        clientEmail: FIREBASE_CLIENT_EMAIL,
+        privateKey: FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+      }),
+    });
 
 async function main() {
-  await mongoose.connect(MONGODB_URI);
-  console.log("Connected to MongoDB.");
-
+  const db = getFirestore(app);
   const username = ADMIN_USERNAME.toLowerCase().trim();
-  const existing = await User.findOne({ username });
+  const ref = db.collection("users").doc(username);
 
-  if (existing) {
-    console.log(`\nUser "${username}" already exists — nothing to do.`);
+  if ((await ref.get()).exists) {
+    console.log(`User "${username}" already exists — nothing to do.`);
   } else {
-    const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
-    await User.create({
+    await ref.create({
       username,
-      passwordHash,
+      passwordHash: await bcrypt.hash(ADMIN_PASSWORD, 10),
       role: "admin",
       displayName: ADMIN_DISPLAY_NAME,
+      createdAt: new Date(),
     });
-    console.log(`\nCreated admin account "${username}".`);
+    console.log(`Created admin account "${username}".`);
   }
 
-  await mongoose.disconnect();
-  console.log(
-    'Sign in and use the admin\'s "+ New User" screen to create KDF and Social Welfare accounts.'
-  );
+  console.log('Sign in and use the admin\'s "+ New User" screen to create KDF and Social Welfare accounts.');
 }
 
 main().catch((err) => {

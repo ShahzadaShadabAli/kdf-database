@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import bcrypt from "bcryptjs";
 import { authOptions } from "@/lib/auth";
-import { dbConnect } from "@/lib/mongodb";
-import User from "@/models/User";
+import { getUser, setUserPassword } from "@/lib/db";
 import { passwordChangeSchema } from "@/lib/validation";
 
 export async function PUT(req) {
@@ -23,8 +22,7 @@ export async function PUT(req) {
     }
     const { currentPassword, newPassword } = parsed.data;
 
-    await dbConnect();
-    const user = await User.findById(session.user.id);
+    const user = await getUser(session.user.id);
     if (!user) {
       return NextResponse.json({ error: "Account not found" }, { status: 404 });
     }
@@ -34,8 +32,7 @@ export async function PUT(req) {
       return NextResponse.json({ error: "Current password is incorrect." }, { status: 401 });
     }
 
-    user.passwordHash = await bcrypt.hash(newPassword, 10);
-    await user.save();
+    await setUserPassword(user.username, await bcrypt.hash(newPassword, 10));
 
     return NextResponse.json({ ok: true });
   } catch (err) {

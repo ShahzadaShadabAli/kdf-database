@@ -1,7 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { dbConnect } from "@/lib/mongodb";
-import Case from "@/models/Case";
+import { getCase } from "@/lib/db";
 import { Topbar } from "@/components/Topbar";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -19,8 +18,7 @@ export default async function EditCasePage({ params }) {
   const session = await getServerSession(authOptions);
   const cnic = decodeURIComponent(params.cnic);
 
-  await dbConnect();
-  const found = await Case.findOne({ cnic }).lean();
+  const found = await getCase(cnic);
   if (!found) notFound();
 
   if (found.status !== "referred") {
@@ -47,9 +45,11 @@ export default async function EditCasePage({ params }) {
   }
 
   const initialData = {
+    caseType: "new",
     name: found.name,
     gender: found.gender || "Male",
     maritalStatus: found.maritalStatus,
+    guardianRelation: found.guardianRelation || "S/O",
     sonOf: found.sonOf,
     spouse: found.spouse || "",
     dob: toDateInputValue(found.dob),

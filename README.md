@@ -17,8 +17,59 @@ before and after that visit, not during it.
 
 ## Tech stack
 
-Next.js (App Router, JavaScript), MongoDB via Mongoose, NextAuth.js
-(Credentials provider, JWT sessions), zod for server-side validation.
+Next.js (App Router, JavaScript), Firebase Cloud Firestore via the
+`firebase-admin` SDK (server-side only — the browser never talks to the
+database directly), NextAuth.js (Credentials provider, JWT sessions), zod
+for server-side validation.
+
+### How data is stored
+
+- `cases/{hashed cnic}` — one document per applicant. Firestore has no
+  unique indexes, so the document ID itself is what guarantees one case per
+  CNIC; the ID is a keyed hash of the CNIC rather than the number itself, so
+  the database never holds a readable CNIC even as a document name. Editing
+  a case's CNIC re-keys the document inside a transaction.
+- `users/{username}` — one document per account, keyed by username for the
+  same reason. Holds the bcrypt password hash, role, and display name.
+- `counters/caseNo` — the running sequence behind `KDF-000123` case
+  numbers, incremented in the same transaction that creates the case.
+
+Every read happens server-side and needs no composite indexes, so there's
+no index configuration to set up in the Firebase console.
+
+### Encryption of CNIC and phone numbers
+
+A case record names a disabled person and ties them to an address, so the
+two directly identifying fields — **CNIC** and **phone number** — are
+encrypted before they are written to Firestore and decrypted on the way
+back out. Anyone holding a copy of the database — a leaked backup, a stolen
+service-account key, Google itself — sees ciphertext for both.
+
+- **Fields** are encrypted with AES-256-GCM using a fresh random nonce, so
+  the same CNIC written twice produces two different ciphertexts and the
+  database reveals nothing by comparing them. The authentication tag means a
+  tampered value fails to decrypt instead of quietly returning something
+  wrong.
+- **Document IDs** are an HMAC-SHA256 of the CNIC. Randomised ciphertext
+  can't be looked up, so this gives each CNIC one stable, meaningless ID to
+  store the case under — which is what still enforces one case per CNIC. The
+  hash is *keyed*: there are only so many valid CNICs, so a plain SHA-256
+  could be reversed by simply hashing every possible number.
+- Both keys are derived (HKDF-SHA256) from the single `DATA_ENCRYPTION_KEY`
+  secret, so there is one value to configure and back up.
+
+All of this lives in `lib/crypto.js` and is applied in `lib/db.js` and
+nowhere else: every page, API route, filter and Excel export hands in and
+receives ordinary plaintext, and never sees a ciphertext. Values written
+before encryption was switched on are passed through unchanged, so an older
+database keeps reading correctly.
+
+> **Back up `DATA_ENCRYPTION_KEY`, separately from the database.** It is not
+> recoverable. Without it, every stored CNIC and phone number is unreadable
+> and no existing case can be looked up again. Local development and the
+> deployed server must use the same value, or neither can read the other's
+> records. Rotating it requires decrypting and rewriting every case with the
+> old key still in hand.
 
 One deliberate substitution: **bcryptjs** instead of `bcrypt`. Both use the
 same algorithm and hash format; `bcryptjs` is pure JavaScript, which avoids
@@ -35,7 +86,9 @@ a C++ toolchain installed.
 
 2. Copy `.env.local.example` to `.env.local` and fill in:
 
-   - `MONGODB_URI` — a MongoDB Atlas (or local) connection string.
+   - `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` —
+     from a Firebase service-account key (Firebase Console → Project
+     settings → Service accounts → Generate new private key).
    - `NEXTAUTH_SECRET` — a long random string (`openssl rand -base64 32`).
    - `NEXTAUTH_URL` — `http://localhost:3000` for local dev.
    - `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_DISPLAY_NAME` — the one
@@ -73,6 +126,25 @@ that person directly. Anyone can change their own password afterward from
 the **Change password** link in the top bar (`/account`) — the old password
 has to be entered correctly first.
 
+## Case types
+
+KDF's intake form (`/kdf/new`) offers two case types, switchable from the
+top-right of the form (new is the default):
+
+- **New case** — a disabled applicant registering for the first time. Goes
+  through the full referred → Social Welfare decision flow described below.
+- **Old case** — a pre-existing paper record (from before this system
+  existed) being typed in for the record. It has its own, shorter field set
+  (name, S/O or D/O + father's/husband's name, type/nature of disability,
+  fit/unfit, date of birth, CNIC, a single free-text address, contact
+  number, and the original paper certificate number) and is saved as
+  `status: "verified"` immediately — it never enters Social Welfare's
+  referred queue, since it's already a settled historical record, not a new
+  referral. Because it skips "referred," it also can't be edited afterward
+  (same rule as any other verified case) and doesn't get the printable
+  application form or disability certificate, since those are built from
+  new-case fields it doesn't have.
+
 ## How a case flows
 
 1. **KDF** registers a new case at `/kdf/new` when a disabled applicant
@@ -106,11 +178,12 @@ answerable.
 
 ## Case fields
 
-Name, gender, marital status, son/daughter of, spouse (optional), date of
-birth, CNIC, qualification (optional), phone, email (optional), assistive devices
-provided (optional), type of disability (Physically / Visually / Hearing /
-Mentally), nature of disability, cause of disability (optional), type of
-job can do (optional), source of income (optional), and two addresses —
+**New case:** Name, gender, marital status, son/daughter of, spouse
+(optional), date of birth, CNIC, qualification (optional), phone, email
+(optional), assistive devices provided (optional), type of disability
+(Physically / Visually / Hearing and Speech / Mentally Retarded / Multiple
+Disabilities), nature of disability, cause of disability (optional), type
+of job can do (optional), source of income (optional), and two addresses —
 present and permanent, each broken into UC / Tehsil / District rather than
 one free-text field, with a "same as present" option.
 
@@ -122,6 +195,27 @@ faithful reproduction of that exact form, fields 1–16 filled in from the
 case record. Fields 17–21 (the Assessment Board's declaration and
 category) and every signature line print blank, for the board and
 applicant to fill by hand.
+
+The disability-type options were renamed from an earlier version of this
+form ("Hearing" → "Hearing and Speech", "Mentally" → "Mentally Retarded",
+plus a new "Multiple Disabilities" option) — the old labels are still
+accepted so pre-existing cases saved under them stay editable; the intake
+form itself only offers the current five.
+
+**Old case:** Name, S/O or D/O + father's/husband's name, type/nature of
+disability (free text), fit/unfit, date of birth, CNIC, a single free-text
+address, contact number, and the original paper certificate number. See
+"Case types" above.
+
+## Searching and filtering
+
+Both `/kdf` and `/swd` case tables have a filter bar above them — gender,
+a free-text disability search (matches type or nature of disability),
+an age range (computed from date of birth), and free-text UC/tehsil/district
+matches. Filtering happens client-side against the already-loaded case
+list, so it updates instantly with no page reload. Old-case records don't
+have gender or a structured address, so a filter on those fields simply
+won't match them unless left blank.
 
 ## Pages & API
 
@@ -164,6 +258,10 @@ Every API route re-checks the caller's role server-side via
   printed anywhere in plaintext — including by the seed script, which reads
   the bootstrap admin's password from an environment variable and hashes it
   before it ever touches the database.
+- CNIC and phone numbers are encrypted at rest and stored under hashed
+  document IDs — see "Encryption of CNIC and phone numbers" above. The
+  encryption key lives in the environment, not in Firebase, so read access
+  to the database alone does not reveal either field.
 - Only an `admin` can create accounts; the role is re-checked server-side.
 - Sessions are JWT-based NextAuth cookies (`httpOnly`, `sameSite: "strict"`,
   and `secure` in production).
@@ -178,12 +276,21 @@ Every API route re-checks the caller's role server-side via
 - API error responses never include stack traces; errors are logged
   server-side only (`console.error`).
 
-**Before handling real applicant data at any scale:** restrict MongoDB Atlas
-network access to known IPs, use a database user scoped to only this
-database, confirm encryption at rest is enabled (on by default on Atlas),
-and consider field-level encryption for `cnic` and the medical fields —
-this pass stores them as plain strings, a reasonable starting point for a
-pilot but not for production-scale sensitive medical/identity data.
+- The Firestore database should be created in **production mode** (all
+  client access denied by security rules). The app never uses client-side
+  Firebase — only the server-side Admin SDK, which bypasses security rules
+  — so locked-down rules cost nothing and block anyone who finds the
+  project ID from reading data directly.
+- The service-account private key grants full access to the project. It
+  lives only in environment variables, never in the repo; if it's ever
+  exposed, revoke it in Google Cloud Console → IAM → Service accounts and
+  generate a new one.
+
+**Before handling real applicant data at any scale:** consider field-level
+encryption for `cnic` and the medical fields — this pass stores them as
+plain strings (Firestore encrypts data at rest by default), a reasonable
+starting point for a pilot but not for production-scale sensitive
+medical/identity data.
 
 ## Handing this off to KDF
 
@@ -194,19 +301,41 @@ pilot but not for production-scale sensitive medical/identity data.
 2. That admin creates every real KDF and SWD account from `/admin/new`,
    handing each person a temporary password; everyone changes their own
    from `/account` on first login.
-3. Rotate anything a developer set up during development — their own Atlas
-   cluster/database user, `NEXTAUTH_SECRET` — rather than repurposing it for
-   the live system.
+3. Rotate anything a developer set up during development — their own
+   Firebase project or service-account key, `NEXTAUTH_SECRET` — rather than
+   repurposing it for the live system. Ideally KDF's own Google account owns
+   the Firebase project from the start.
 
 ## Deploying
 
-Deploys cleanly to Vercel with MongoDB Atlas:
+Deploys cleanly to Vercel with Firebase:
 
 1. Push this repo to GitHub/GitLab/Bitbucket and import it in Vercel.
-2. Set `MONGODB_URI`, `NEXTAUTH_SECRET`, and `NEXTAUTH_URL` (your production
-   URL) as environment variables in the Vercel project settings.
-3. Run `npm run seed` once against the production database to create the
+2. Set `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`,
+   `DATA_ENCRYPTION_KEY`, `NEXTAUTH_SECRET`, and `NEXTAUTH_URL` (your
+   production URL) as environment variables in the Vercel project settings.
+   Paste the private key exactly as it appears in the downloaded JSON.
+   `DATA_ENCRYPTION_KEY` must be the **same value** used wherever the data
+   was entered — a different key makes every existing case unreadable.
+3. Run `npm run seed` once against the production project to create the
    bootstrap admin account.
+
+## Testing locally without a Firebase project
+
+The app also runs against Google's local Firestore emulator (needs Java
+11+). Start it with `npx firebase-tools emulators:start --only firestore
+--project demo-kdf`, then set in `.env.local`:
+
+```
+FIREBASE_PROJECT_ID=demo-kdf
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
+```
+
+With `FIRESTORE_EMULATOR_HOST` set, no service-account key is needed —
+but `DATA_ENCRYPTION_KEY` is still required, since encryption does not
+depend on which database it writes to. Use a throwaway key for the
+emulator, not the production one. Remove the `FIRESTORE_EMULATOR_HOST`
+line before connecting to a real project.
 
 ## What's intentionally not included
 

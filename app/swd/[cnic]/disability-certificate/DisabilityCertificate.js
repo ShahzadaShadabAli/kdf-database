@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-
-const OFFICER_NAME_KEY = "kdf-cert-officer-name";
 
 function formatAddress(addr) {
   if (!addr) return "";
@@ -17,32 +15,17 @@ function toDateInputValue(date) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+const COUNCIL_NAMES = {
+  NCRDP: "NATIONAL COUNCIL FOR THE REHABILITATION OF DISABLED PERSONS",
+  PCRDP: "PROVINCIAL COUNCIL FOR THE REHABILITATION OF DISABLED PERSONS",
+};
+
 export function DisabilityCertificate({ data }) {
-  const [officerName, setOfficerName] = useState("");
-  const [regNo, setRegNo] = useState("");
   const [dateStr, setDateStr] = useState(() =>
     toDateInputValue(data.decidedAt ? new Date(data.decidedAt) : new Date())
   );
-  const [printError, setPrintError] = useState("");
-
-  useEffect(() => {
-    const saved = window.localStorage.getItem(OFFICER_NAME_KEY);
-    if (saved) setOfficerName(saved);
-  }, []);
-
-  function updateOfficerName(value) {
-    setOfficerName(value);
-    window.localStorage.setItem(OFFICER_NAME_KEY, value);
-  }
-
-  function handlePrint() {
-    if (!regNo.trim()) {
-      setPrintError("Enter the register number before printing.");
-      return;
-    }
-    setPrintError("");
-    window.print();
-  }
+  const [council, setCouncil] = useState("NCRDP");
+  const [specialistName, setSpecialistName] = useState("");
 
   const dated = new Date(`${dateStr}T00:00:00`);
   const dd = String(dated.getDate()).padStart(2, "0");
@@ -63,45 +46,37 @@ export function DisabilityCertificate({ data }) {
             <label htmlFor="certDate">Date</label>
             <input id="certDate" type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} />
           </div>
-          <div className="field" style={{ margin: 0, minWidth: 160 }}>
-            <label htmlFor="regNo">Register No. (required to print)</label>
+          <div className="field" style={{ margin: 0, minWidth: 140 }}>
+            <label htmlFor="council">Council</label>
+            <select id="council" value={council} onChange={(e) => setCouncil(e.target.value)}>
+              <option value="NCRDP">NCRDP</option>
+              <option value="PCRDP">PCRDP</option>
+            </select>
+          </div>
+          <div className="field" style={{ margin: 0, minWidth: 200 }}>
+            <label htmlFor="specialistName">Specialist name (Member)</label>
             <input
-              id="regNo"
-              value={regNo}
-              onChange={(e) => {
-                setRegNo(e.target.value);
-                if (e.target.value.trim()) setPrintError("");
-              }}
-              placeholder="e.g. 0843/2014"
+              id="specialistName"
+              value={specialistName}
+              onChange={(e) => setSpecialistName(e.target.value)}
+              placeholder="e.g. Dr. Nasir Hussain"
             />
           </div>
-          <div className="field" style={{ margin: 0, minWidth: 220 }}>
-            <label htmlFor="officerName">Social Welfare Officer name (remembered on this device)</label>
-            <input
-              id="officerName"
-              value={officerName}
-              onChange={(e) => updateOfficerName(e.target.value)}
-              placeholder="e.g. Ghulam Nabi"
-            />
-          </div>
-          <button className="btn" onClick={handlePrint} type="button">
+          <button className="btn" onClick={() => window.print()} type="button">
             Print
           </button>
         </div>
       </div>
-      {printError && (
-        <div className="error-banner no-print" style={{ marginBottom: 16 }}>
-          {printError}
-        </div>
-      )}
 
       <div className="dcert">
-        <div className="dcert-watermark">NCRDP</div>
+        <div className="dcert-watermark">{council}</div>
         <div className="dcert-body">
           <div className="head">
-            <p>GOVERNMENT OF PAKISTAN</p>
-            <p className="dept">MINISTRY OF SOCIAL WELFARE AND SPECIAL EDUCATION</p>
-            <p>(NATIONAL COUNCIL FOR THE REHABILITATION OF DISABLED PERSONS)</p>
+            <p>GOVERNMENT OF GILGIT-BALTISTAN</p>
+            <p className="dept">
+              SOCIAL WELFARE, POPULATION WELFARE, WOMEN DEVELOPMENT, HUMAN/CHILD RIGHTS AND YOUTH AFFAIRS
+            </p>
+            <p>({COUNCIL_NAMES[council]})</p>
           </div>
           <div className="head-rule">* * * * * * * * * * * * *</div>
 
@@ -110,7 +85,7 @@ export function DisabilityCertificate({ data }) {
               Dated: <span className="fval">{dd}-{mm}-{yyyy}</span>
             </span>
             <span>
-              Reg. No: <span className="fval">{regNo || " "}</span>-NCRDP
+              Reg. No: <span className="fval">{data.certificateNo}</span>-{council}
             </span>
           </div>
 
@@ -125,7 +100,7 @@ export function DisabilityCertificate({ data }) {
               <span className="fval">{data.name}</span>
             </div>
             <div className="ffield">
-              <span className="flabel">2. S/O:</span>
+              <span className="flabel">2. S/D/W/O:</span>
               <span className="fval">{data.sonOf}</span>
             </div>
           </div>
@@ -159,7 +134,11 @@ export function DisabilityCertificate({ data }) {
             </div>
             <div className="ffield">
               <span className="flabel">8. Nature of Disability:</span>
-              <span className="fval">{data.natureOfDisability}</span>
+              <span className="fval">
+                {data.disabilityType}
+                {data.disabilityType && data.natureOfDisability ? ". " : ""}
+                {data.natureOfDisability && `(${data.natureOfDisability}).`}
+              </span>
             </div>
           </div>
 
@@ -177,26 +156,29 @@ export function DisabilityCertificate({ data }) {
             </div>
           </div>
 
-          <div className="board-rec">
-            <span className="flabel">11. Recommendation of the Board:</span>
-            <div className="board-rec-options">
-              <span>(i) <span className="fval">&nbsp;</span></span>
-              <span>(ii) *Not fit for work. <span className="fval">&nbsp;</span></span>
+          <div className="dcert-sign-row">
+            <div className="sig-col">
+              <div className="board-line">(i) *Fit for work. <span className="fval">&nbsp;</span></div>
+              <div className="sig">
+                <div className="sig-name">&nbsp;</div>
+                <div className="cap">Social Welfare Officer/Member {council}</div>
+                <div>RHQ Hospital Skardu</div>
+              </div>
             </div>
-            <p className="note">*Not applicable — strike out whichever is not applicable.</p>
+            <div className="sig-col">
+              <div className="board-line">(ii) <span className="fval">&nbsp;</span></div>
+              <div className="sig">
+                <div className="sig-name">{specialistName || " "}</div>
+                <div className="cap">Consultant Orthopedic &amp; Spine/Member {council}</div>
+                <div>RHQ Hospital Skardu</div>
+              </div>
+            </div>
           </div>
 
-          <div className="dcert-sign-row">
-            <div className="sig">
-              <div className="sig-name">{officerName || " "}</div>
-              <div className="cap">Social Welfare Officer/Member NCRDP</div>
-              <div>DHQ Hospital Skardu</div>
-            </div>
-            <div className="sig">
-              <div className="sig-name">&nbsp;</div>
-              <div className="cap">Medical Superintendent/Chairman</div>
-              <div>Assessment Board NCRDP DHQ Hospital Skardu</div>
-            </div>
+          <div className="dcert-chairman">
+            <div className="sig-name">&nbsp;</div>
+            <div className="cap">Deputy Medical Superintendent (Chairman)</div>
+            <div>{council} RHQ Hospital Skardu</div>
           </div>
         </div>
       </div>

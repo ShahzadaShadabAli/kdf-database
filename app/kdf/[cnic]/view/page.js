@@ -1,7 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { dbConnect } from "@/lib/mongodb";
-import Case from "@/models/Case";
+import { getCase } from "@/lib/db";
 import { Topbar } from "@/components/Topbar";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -10,8 +9,7 @@ export default async function KdfViewPage({ params }) {
   const session = await getServerSession(authOptions);
   const cnic = decodeURIComponent(params.cnic);
 
-  await dbConnect();
-  const found = await Case.findOne({ cnic }).lean();
+  const found = await getCase(cnic);
   if (!found) notFound();
 
   return (
@@ -34,7 +32,7 @@ export default async function KdfViewPage({ params }) {
 
         <div className="card" style={{ marginTop: 16 }}>
           <h3 style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span>Applicant</span>
+            <span>Applicant {found.caseType === "old" && <span className="badge withdrawn">old case</span>}</span>
             <span className={`badge ${found.status}`}>{found.status}</span>
           </h3>
           <div className="detail-grid">
@@ -50,76 +48,113 @@ export default async function KdfViewPage({ params }) {
               <div className="k">Name</div>
               <div className="v">{found.name}</div>
             </div>
-            <div>
-              <div className="k">Gender</div>
-              <div className="v">{found.gender || "—"}</div>
-            </div>
-            <div>
-              <div className="k">Marital Status</div>
-              <div className="v">{found.maritalStatus}</div>
-            </div>
-            <div>
-              <div className="k">Son / Daughter of</div>
-              <div className="v">{found.sonOf}</div>
-            </div>
-            <div>
-              <div className="k">Spouse</div>
-              <div className="v">{found.spouse || "—"}</div>
-            </div>
-            <div>
-              <div className="k">Date of Birth</div>
-              <div className="v">{new Date(found.dob).toLocaleDateString()}</div>
-            </div>
-            <div>
-              <div className="k">Qualification</div>
-              <div className="v">{found.qualification || "—"}</div>
-            </div>
-            <div>
-              <div className="k">Phone</div>
-              <div className="v">{found.phone}</div>
-            </div>
-            <div>
-              <div className="k">Email</div>
-              <div className="v">{found.email || "—"}</div>
-            </div>
-            <div>
-              <div className="k">Type of Disability</div>
-              <div className="v">{found.disabilityType}</div>
-            </div>
-            <div>
-              <div className="k">Nature of Disability</div>
-              <div className="v">{found.natureOfDisability}</div>
-            </div>
-            <div>
-              <div className="k">Cause of Disability</div>
-              <div className="v">{found.causeOfDisability || "—"}</div>
-            </div>
-            <div>
-              <div className="k">Assistive Devices Provided</div>
-              <div className="v">{found.assistiveDevices || "—"}</div>
-            </div>
-            <div>
-              <div className="k">Type of Job Can Do</div>
-              <div className="v">{found.jobType || "—"}</div>
-            </div>
-            <div>
-              <div className="k">Source of Income</div>
-              <div className="v">{found.sourceOfIncome || "—"}</div>
-            </div>
-            <div className="full">
-              <div className="k">Present Address</div>
-              <div className="v">
-                UC {found.presentAddress?.uc}, Tehsil {found.presentAddress?.tehsil}, District{" "}
-                {found.presentAddress?.district}
-              </div>
-            </div>
-            <div className="full">
-              <div className="k">Permanent Address</div>
-              <div className="v">
-                UC {found.permanentAddress?.uc}, Tehsil {found.permanentAddress?.tehsil}, District{" "}
-                {found.permanentAddress?.district}
-              </div>
-            </div>
+            {found.caseType === "old" ? (
+              <>
+                <div>
+                  <div className="k">{found.guardianRelation || "S/O"}</div>
+                  <div className="v">{found.sonOf}</div>
+                </div>
+                <div>
+                  <div className="k">Type/Nature of Disability</div>
+                  <div className="v">{found.natureOfDisability}</div>
+                </div>
+                <div>
+                  <div className="k">Fit / Unfit</div>
+                  <div className="v">{found.fitness || "—"}</div>
+                </div>
+                <div>
+                  <div className="k">Date of Birth</div>
+                  <div className="v">{new Date(found.dob).toLocaleDateString()}</div>
+                </div>
+                <div>
+                  <div className="k">Contact Cell No.</div>
+                  <div className="v">{found.phone}</div>
+                </div>
+                <div>
+                  <div className="k">Certificate No.</div>
+                  <div className="v">{found.certificateNo || "—"}</div>
+                </div>
+                <div className="full">
+                  <div className="k">Address</div>
+                  <div className="v">
+                    UC {found.address?.uc}, Tehsil {found.address?.tehsil}, District {found.address?.district}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <div className="k">Gender</div>
+                  <div className="v">{found.gender || "—"}</div>
+                </div>
+                <div>
+                  <div className="k">Marital Status</div>
+                  <div className="v">{found.maritalStatus}</div>
+                </div>
+                <div>
+                  <div className="k">{found.guardianRelation || "S/O"}</div>
+                  <div className="v">{found.sonOf}</div>
+                </div>
+                <div>
+                  <div className="k">Spouse</div>
+                  <div className="v">{found.spouse || "—"}</div>
+                </div>
+                <div>
+                  <div className="k">Date of Birth</div>
+                  <div className="v">{new Date(found.dob).toLocaleDateString()}</div>
+                </div>
+                <div>
+                  <div className="k">Qualification</div>
+                  <div className="v">{found.qualification || "—"}</div>
+                </div>
+                <div>
+                  <div className="k">Phone</div>
+                  <div className="v">{found.phone}</div>
+                </div>
+                <div>
+                  <div className="k">Email</div>
+                  <div className="v">{found.email || "—"}</div>
+                </div>
+                <div>
+                  <div className="k">Type of Disability</div>
+                  <div className="v">{found.disabilityType}</div>
+                </div>
+                <div>
+                  <div className="k">Nature of Disability</div>
+                  <div className="v">{found.natureOfDisability}</div>
+                </div>
+                <div>
+                  <div className="k">Cause of Disability</div>
+                  <div className="v">{found.causeOfDisability || "—"}</div>
+                </div>
+                <div>
+                  <div className="k">Assistive Devices Provided</div>
+                  <div className="v">{found.assistiveDevices || "—"}</div>
+                </div>
+                <div>
+                  <div className="k">Type of Job Can Do</div>
+                  <div className="v">{found.jobType || "—"}</div>
+                </div>
+                <div>
+                  <div className="k">Source of Income</div>
+                  <div className="v">{found.sourceOfIncome || "—"}</div>
+                </div>
+                <div className="full">
+                  <div className="k">Present Address</div>
+                  <div className="v">
+                    UC {found.presentAddress?.uc}, Tehsil {found.presentAddress?.tehsil}, District{" "}
+                    {found.presentAddress?.district}
+                  </div>
+                </div>
+                <div className="full">
+                  <div className="k">Permanent Address</div>
+                  <div className="v">
+                    UC {found.permanentAddress?.uc}, Tehsil {found.permanentAddress?.tehsil}, District{" "}
+                    {found.permanentAddress?.district}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
           {found.status === "referred" && (
             <Link

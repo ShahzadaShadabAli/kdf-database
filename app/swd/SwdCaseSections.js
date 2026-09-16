@@ -1,0 +1,196 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { CaseFilterBar } from "@/components/CaseFilterBar";
+import { EMPTY_CASE_FILTERS, hasActiveCaseFilters, matchesCaseFilters, sortByCertificateNo } from "@/lib/caseFilters";
+
+function formatAddress(addr) {
+  if (!addr) return "—";
+  return `UC ${addr.uc}, Tehsil ${addr.tehsil}, District ${addr.district}`;
+}
+
+function CaseTable({ cases, emptyLabel }) {
+  if (cases.length === 0) {
+    return <div className="empty-note">{emptyLabel}</div>;
+  }
+
+  return (
+    <div className="table-wrap">
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Case No.</th>
+            <th>CNIC</th>
+            <th>Name</th>
+            <th>Gender</th>
+            <th>Date of Birth</th>
+            <th>Phone</th>
+            <th>Type of Disability</th>
+            <th>Nature of Disability</th>
+            <th>Present Address</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {cases.map((c) => (
+            <tr key={c.cnic}>
+              <td>{c.caseType === "old" ? "Old" : "New"}</td>
+              <td className="mono">{c.caseNo}</td>
+              <td className="mono">{c.cnic}</td>
+              <td>{c.name}</td>
+              <td>{c.gender || "—"}</td>
+              <td>{c.dob ? new Date(c.dob).toLocaleDateString() : "—"}</td>
+              <td>{c.phone}</td>
+              <td>{c.disabilityType || "—"}</td>
+              <td>{c.natureOfDisability}</td>
+              <td>{c.caseType === "old" ? formatAddress(c.address) : formatAddress(c.presentAddress)}</td>
+              <td>
+                <span className={`badge ${c.status}`}>{c.status}</span>
+              </td>
+              <td>
+                <Link
+                  href={`/swd/${encodeURIComponent(c.cnic)}`}
+                  className="btn ghost"
+                  style={{ padding: "4px 10px", fontSize: 12, textDecoration: "none" }}
+                >
+                  View
+                </Link>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Matches the paper register KDF/Social Welfare already keep: a running
+// serial number, no internal case number, and the certificate number
+// Social Welfare punches in as the record's real identifier.
+function CompletedCaseTable({ cases, emptyLabel }) {
+  if (cases.length === 0) {
+    return <div className="empty-note">{emptyLabel}</div>;
+  }
+
+  return (
+    <div className="table-wrap">
+      <table className="data-table data-table-register">
+        <thead>
+          <tr>
+            <th>S.#</th>
+            <th>Name of Disable Person / Father's Name</th>
+            <th>Type/Nature of Disability</th>
+            <th>Fit / Unfit</th>
+            <th>Date of Birth</th>
+            <th>CNIC No.</th>
+            <th>Address</th>
+            <th>Contact Cell No.</th>
+            <th>Certificate No.</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {cases.map((c, i) => (
+            <tr key={c.cnic}>
+              <td>{i + 1}</td>
+              <td>
+                {c.name} {c.guardianRelation || "S/O"} {c.sonOf}
+              </td>
+              <td>{c.natureOfDisability}</td>
+              <td>{c.fitness || "—"}</td>
+              <td>{c.dob ? new Date(c.dob).toLocaleDateString() : "—"}</td>
+              <td className="mono">{c.cnic}</td>
+              <td>{c.caseType === "old" ? formatAddress(c.address) : formatAddress(c.presentAddress)}</td>
+              <td>{c.phone}</td>
+              <td className="mono">{c.certificateNo || "—"}</td>
+              <td>
+                <span className={`badge ${c.status}`}>{c.status}</span>
+              </td>
+              <td>
+                <Link
+                  href={`/swd/${encodeURIComponent(c.cnic)}`}
+                  className="btn ghost"
+                  style={{ padding: "4px 10px", fontSize: 12, textDecoration: "none" }}
+                >
+                  View
+                </Link>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function exportHref(filters) {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== "" && value != null) params.set(key, value);
+  });
+  const qs = params.toString();
+  return qs ? `/api/cases/export?${qs}` : "/api/cases/export";
+}
+
+export function SwdCaseSections({ cases }) {
+  const [filters, setFilters] = useState(EMPTY_CASE_FILTERS);
+  const [showFilters, setShowFilters] = useState(false);
+  const filtersActive = hasActiveCaseFilters(filters);
+
+  const filtered = useMemo(() => cases.filter((c) => matchesCaseFilters(c, filters)), [cases, filters]);
+  const referred = filtered.filter((c) => c.status === "referred");
+  const completed = filtered.filter((c) => c.status !== "referred").sort(sortByCertificateNo);
+
+  return (
+    <>
+      <div className="card" style={{ marginTop: 16 }}>
+        <h3>Referred {referred.length ? `(${referred.length})` : ""}</h3>
+        <CaseTable cases={referred} emptyLabel="No cases awaiting a decision." />
+      </div>
+
+      <div className="card">
+        <h3 style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>Completed {completed.length ? `(${completed.length})` : ""}</span>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              className="btn ghost"
+              style={{ padding: "5px 12px", fontSize: 12 }}
+              onClick={() => setShowFilters((v) => !v)}
+            >
+              {showFilters ? "Hide filters" : "Filter / Search"}
+            </button>
+            {filtersActive && (
+              <a
+                href={exportHref(filters)}
+                className="btn ghost"
+                style={{ padding: "5px 12px", fontSize: 12, textDecoration: "none" }}
+              >
+                Download filtered (Excel)
+              </a>
+            )}
+            <a
+              href="/api/cases/export"
+              className="btn ghost"
+              style={{ padding: "5px 12px", fontSize: 12, textDecoration: "none" }}
+            >
+              Download all (Excel)
+            </a>
+          </div>
+        </h3>
+        <p style={{ color: "var(--ink-soft)", fontSize: 12, margin: "-8px 0 12px" }}>
+          Sorted by certificate number.{" "}
+          {filtersActive
+            ? "\"Download filtered\" exports only the rows matching your current filters, in this same order."
+            : "The download includes all completed cases in this same order."}
+        </p>
+        {showFilters && <CaseFilterBar filters={filters} onChange={setFilters} />}
+        <CompletedCaseTable cases={completed} emptyLabel="No decisions made yet." />
+      </div>
+    </>
+  );
+}
