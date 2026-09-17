@@ -35,6 +35,7 @@ export default async function CertificatePage({ params }) {
   }
 
   const data = {
+    status: found.status,
     cnic: found.cnic,
     name: found.name,
     sonOf: found.sonOf,
@@ -47,6 +48,13 @@ export default async function CertificatePage({ params }) {
     causeOfDisability: found.causeOfDisability || "",
     jobType: found.jobType || "",
     sourceOfIncome: found.sourceOfIncome || "",
+    disabledStatus: found.disabledStatus || "",
+    impairment: found.impairment || "",
+    fitness: found.fitness || "",
+    category: found.category || "",
+    // null = never saved, so the form falls back to ticking the box that
+    // matches the type KDF recorded; [] = deliberately left all unticked.
+    disabilityChecks: found.disabilityChecks ?? null,
     phone: found.phone,
     presentAddress: found.presentAddress,
     permanentAddress: found.permanentAddress,

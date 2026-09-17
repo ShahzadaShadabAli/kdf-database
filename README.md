@@ -182,19 +182,49 @@ answerable.
 (optional), date of birth, CNIC, qualification (optional), phone, email
 (optional), assistive devices provided (optional), type of disability
 (Physically / Visually / Hearing and Speech / Mentally Retarded / Multiple
-Disabilities), nature of disability, cause of disability (optional), type
-of job can do (optional), source of income (optional), and two addresses —
-present and permanent, each broken into UC / Tehsil / District rather than
-one free-text field, with a "same as present" option.
+Disabilities), source of income (optional), and two addresses — present
+and permanent, each broken into UC / Tehsil / District rather than one
+free-text field, with a "same as present" option.
 
-These match fields 1–16 of the government's own paper form — Application
-for Disability Certificate/Supportive Aid (Social Welfare Department
-Gilgit-Baltistan, NCRDP, SSMC RHQ Hospital Skardu) — so that Social
-Welfare's printable application form (`/swd/[cnic]/certificate`) is a
-faithful reproduction of that exact form, fields 1–16 filled in from the
-case record. Fields 17–21 (the Assessment Board's declaration and
-category) and every signature line print blank, for the board and
-applicant to fill by hand.
+These match the government's own paper form — Application for Disability
+Certificate/Supportive Aid (Social Welfare Department Gilgit-Baltistan,
+NCRDP, SSMC RHQ Hospital Skardu) — so that Social Welfare's printable
+application form (`/swd/[cnic]/certificate`) is a faithful reproduction of
+that exact form, filled in from the case record.
+
+The form's own note — *"Please filled S. No. 9,10,11, 17,18,19,20 and 21"* —
+marks the entries that belong to Social Welfare, not intake, so KDF's form
+doesn't ask for them (and the API drops them if sent):
+
+| S. No. | Entry | Stored as |
+|---|---|---|
+| 9 | Nature of disability | `natureOfDisability` |
+| 10 | Cause of disability | `causeOfDisability` |
+| 11 | Type of job can do | `jobType` |
+| 17 | Disabled / Not Disabled | `disabledStatus` |
+| 18 | Disability / Impairment | `impairment` |
+| 19–20 | Fit / not fit for work (one ✓) | `fitness` (`Fit` / `Unfit`) |
+| 21 | Category A / B / C (one ✓) | `category` |
+
+Pressing **Print** on the application form opens a *Before printing* pop-up
+asking for these, prefilled with whatever was saved last time. **Save and
+print** stores them on the case and then prints. Any of them may be left
+blank to be written in by hand — except that a verified case can't lose its
+nature of disability or fit/unfit status, since the register, the Excel
+export and the disability certificate depend on them. Social Welfare also
+enters 9–11, fit/unfit and the category when verifying a case; both places
+write the same fields, and a KDF edit never overwrites them. Choosing a
+category at verification reveals an optional **Remarks** box
+(`categoryRemarks`), shown on the case page; it's cleared if the category
+later is. Source of income (12) is KDF's alone — verification doesn't
+touch it.
+
+Field 8's four printed boxes (Physically / Visually / Hearing / Mentally)
+are ticked by clicking them on the form, and **more than one** can be
+ticked. Until the form is first saved, the box matching KDF's recorded
+type is pre-ticked ("Hearing and Speech" → Hearing, "Mentally Retarded" →
+Mentally; "Multiple Disabilities" starts with none). The ticks are saved
+along with the pop-up (`disabilityChecks`). Signature lines print blank.
 
 The disability-type options were renamed from an earlier version of this
 form ("Hearing" → "Hearing and Speech", "Mentally" → "Mentally Retarded",
@@ -245,6 +275,9 @@ won't match them unless left blank.
 | `DELETE /api/cases/[cnic]` | kdf | Withdraw (soft-delete) — referred only |
 | `POST /api/cases/[cnic]/restore` | kdf | Withdrawn → referred |
 | `POST /api/cases/[cnic]/decision` | swd | Referred → verified/rejected |
+| `PUT /api/cases/[cnic]/certificate-no` | swd | Set the certificate / register number |
+| `PUT /api/cases/[cnic]/assessment` | swd | Save the application form's S. No. 9–11, 17–21 and field 8 ticks |
+| `GET /api/cases/export` | swd | Completed cases as a styled Excel file (filters optional) |
 | `POST /api/users` | admin | Create an account, any role |
 | `GET /api/users` | admin | List accounts |
 | `PUT /api/account/password` | any | Change own password — current one required |

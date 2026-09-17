@@ -124,7 +124,7 @@ export default async function SwdDetailPage({ params }) {
                 </div>
                 <div>
                   <div className="k">Nature of Disability</div>
-                  <div className="v">{found.natureOfDisability}</div>
+                  <div className="v">{found.natureOfDisability || "—"}</div>
                 </div>
                 <div>
                   <div className="k">Cause of Disability</div>
@@ -142,6 +142,30 @@ export default async function SwdDetailPage({ params }) {
                   <div className="k">Source of Income</div>
                   <div className="v">{found.sourceOfIncome || "—"}</div>
                 </div>
+                <div>
+                  <div className="k">Disabled / Not Disabled</div>
+                  <div className="v">{found.disabledStatus || "—"}</div>
+                </div>
+                <div>
+                  <div className="k">Disability / Impairment</div>
+                  <div className="v">{found.impairment || "—"}</div>
+                </div>
+                <div>
+                  <div className="k">Fit for Work</div>
+                  <div className="v">
+                    {found.fitness === "Fit" ? "Fit" : found.fitness === "Unfit" ? "Not fit" : "—"}
+                  </div>
+                </div>
+                <div>
+                  <div className="k">Category</div>
+                  <div className="v">{found.category || "—"}</div>
+                </div>
+                {found.categoryRemarks && (
+                  <div className="full">
+                    <div className="k">Category Remarks</div>
+                    <div className="v">{found.categoryRemarks}</div>
+                  </div>
+                )}
                 <div className="full">
                   <div className="k">Present Address</div>
                   <div className="v">
@@ -189,10 +213,12 @@ export default async function SwdDetailPage({ params }) {
         {found.status === "referred" && (
           <DecisionActions
             cnic={found.cnic}
+            initialFitness={found.fitness}
             initialNatureOfDisability={found.natureOfDisability}
             initialCauseOfDisability={found.causeOfDisability}
             initialJobType={found.jobType}
-            initialSourceOfIncome={found.sourceOfIncome}
+            initialCategory={found.category}
+            initialCategoryRemarks={found.categoryRemarks}
           />
         )}
 

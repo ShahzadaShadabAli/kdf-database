@@ -68,7 +68,7 @@ function CaseTable({ cases, showEdit }) {
               <td>{c.phone}</td>
               <td>{c.email || "—"}</td>
               <td>{c.disabilityType || "—"}</td>
-              <td>{c.natureOfDisability}</td>
+              <td>{c.natureOfDisability || "—"}</td>
               <td>{c.causeOfDisability || "—"}</td>
               <td>{c.assistiveDevices || "—"}</td>
               <td>{c.jobType || "—"}</td>

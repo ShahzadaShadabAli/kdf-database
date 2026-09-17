@@ -675,6 +675,79 @@ a.row:hover {
   text-decoration: underline;
 }
 
+.gform .category-row .fval,
+.gform .board-row .fval {
+  text-align: center;
+}
+
+.gform .disability-choice:focus-visible {
+  outline: 2px solid var(--green-light);
+  outline-offset: 2px;
+}
+
+/* ---- toolbar and "before printing" pop-up above the application form ---- */
+.form-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.form-toolbar .hint {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  max-width: 62ch;
+  line-height: 1.5;
+}
+
+.assess-dialog {
+  width: min(620px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 16px 48px rgba(27, 31, 28, 0.22);
+}
+
+.assess-dialog::backdrop {
+  background: rgba(27, 31, 28, 0.45);
+}
+
+.assess-dialog form {
+  padding: 20px 22px 18px;
+}
+
+.assess-dialog h3 {
+  font-family: "Newsreader", serif;
+  font-weight: 500;
+  font-size: 19px;
+  margin: 0 0 6px;
+}
+
+.assess-dialog .assess-lede {
+  margin: 0 0 16px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.assess-dialog .subhead {
+  margin-top: 6px;
+}
+
+.assess-dialog .assess-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
 /* ---- printable disability certificate (issued once a case is verified) ---- */
 /* Landscape single-page layout, matching the physical NCRDP certificate. */
 /* Fixed to standard A4 so the certificate prints at a consistent physical

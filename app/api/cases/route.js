@@ -4,6 +4,11 @@ import { authOptions } from "@/lib/auth";
 import { DbError, createCase, listCases } from "@/lib/db";
 import { caseCreateSchema } from "@/lib/validation";
 
+// Every response depends on who is signed in, so this must never be rendered
+// at build time or cached. Declaring it up front also stops `next build` from
+// test-rendering it and logging a "Dynamic server usage" error.
+export const dynamic = "force-dynamic";
+
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
@@ -37,9 +42,6 @@ export async function POST(req) {
       qualification: data.qualification || undefined,
       email: data.email || undefined,
       assistiveDevices: data.assistiveDevices || undefined,
-      natureOfDisability: data.natureOfDisability || undefined,
-      causeOfDisability: data.causeOfDisability || undefined,
-      jobType: data.jobType || undefined,
       sourceOfIncome: data.sourceOfIncome || undefined,
       status: isOldCase ? "verified" : "referred",
       swd: isOldCase ? { decision: "verified", decidedAt: now } : undefined,

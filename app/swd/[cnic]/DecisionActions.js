@@ -5,20 +5,23 @@ import { useRouter } from "next/navigation";
 
 export function DecisionActions({
   cnic,
+  initialFitness,
   initialNatureOfDisability,
   initialCauseOfDisability,
   initialJobType,
-  initialSourceOfIncome,
+  initialCategory,
+  initialCategoryRemarks,
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [showVerifyForm, setShowVerifyForm] = useState(false);
-  const [fitness, setFitness] = useState("Fit");
+  const [fitness, setFitness] = useState(initialFitness || "Fit");
   const [natureOfDisability, setNatureOfDisability] = useState(initialNatureOfDisability || "");
   const [causeOfDisability, setCauseOfDisability] = useState(initialCauseOfDisability || "");
   const [jobType, setJobType] = useState(initialJobType || "");
-  const [sourceOfIncome, setSourceOfIncome] = useState(initialSourceOfIncome || "");
+  const [category, setCategory] = useState(initialCategory || "");
+  const [categoryRemarks, setCategoryRemarks] = useState(initialCategoryRemarks || "");
 
   async function submitDecision(payload) {
     setBusy(true);
@@ -61,7 +64,9 @@ export function DecisionActions({
       natureOfDisability,
       causeOfDisability,
       jobType,
-      sourceOfIncome,
+      category,
+      // The remarks box is only shown while a category is chosen.
+      categoryRemarks: category ? categoryRemarks : "",
     });
   }
 
@@ -104,9 +109,27 @@ export function DecisionActions({
               <input value={jobType} onChange={(e) => setJobType(e.target.value)} />
             </div>
             <div className="field">
-              <label>Source of Income</label>
-              <input value={sourceOfIncome} onChange={(e) => setSourceOfIncome(e.target.value)} />
+              <label htmlFor="verify-category">Category</label>
+              <select id="verify-category" value={category} onChange={(e) => setCategory(e.target.value)}>
+                <option value="">— Select —</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+              </select>
             </div>
+            {category && (
+              <div className="field full">
+                <label htmlFor="verify-category-remarks">Remarks (optional)</label>
+                <textarea
+                  id="verify-category-remarks"
+                  rows={2}
+                  value={categoryRemarks}
+                  onChange={(e) => setCategoryRemarks(e.target.value)}
+                  maxLength={500}
+                  placeholder={`Anything to note about placing this applicant in category ${category}`}
+                />
+              </div>
+            )}
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button className="btn" type="submit" disabled={busy}>

@@ -5,6 +5,11 @@ import { listCases } from "@/lib/db";
 import { EMPTY_CASE_FILTERS, hasActiveCaseFilters, matchesCaseFilters, sortByCertificateNo } from "@/lib/caseFilters";
 import { buildCompletedCasesWorkbook } from "@/lib/caseExport";
 
+// Every response depends on who is signed in, so this must never be rendered
+// at build time or cached. Declaring it up front also stops `next build` from
+// test-rendering it and logging a "Dynamic server usage" error.
+export const dynamic = "force-dynamic";
+
 export async function GET(req) {
   try {
     const session = await getServerSession(authOptions);

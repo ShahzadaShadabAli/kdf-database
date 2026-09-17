@@ -59,9 +59,6 @@ export default async function EditCasePage({ params }) {
     email: found.email || "",
     assistiveDevices: found.assistiveDevices || "",
     disabilityType: found.disabilityType || "Physically",
-    natureOfDisability: found.natureOfDisability,
-    causeOfDisability: found.causeOfDisability || "",
-    jobType: found.jobType || "",
     sourceOfIncome: found.sourceOfIncome || "",
     presentAddress: {
       uc: found.presentAddress?.uc || "",

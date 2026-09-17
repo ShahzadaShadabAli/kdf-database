@@ -26,7 +26,8 @@ export async function POST(req, { params }) {
         { status: 400 }
       );
     }
-    const { decision, fitness, natureOfDisability, causeOfDisability, jobType, sourceOfIncome } = parsed.data;
+    const { decision, fitness, natureOfDisability, causeOfDisability, jobType, category, categoryRemarks } =
+      parsed.data;
 
     const updated = await updateCase(cnic, (found) => {
       if (found.status !== "referred") {
@@ -40,14 +41,17 @@ export async function POST(req, { params }) {
         auditLog: [...found.auditLog, { action: decision, byUser: session.user.id, at: now }],
       };
       // Verifying records the assessment board's actual findings — these
-      // overwrite whatever KDF entered at intake, since this is now the
-      // confirmed medical determination.
+      // replace anything Social Welfare entered earlier while printing the
+      // application form, since this is now the confirmed determination.
+      // Source of income is KDF's and is left as it is.
       if (decision === "verified") {
         next.fitness = fitness;
         next.natureOfDisability = natureOfDisability;
         next.causeOfDisability = causeOfDisability || undefined;
         next.jobType = jobType || undefined;
-        next.sourceOfIncome = sourceOfIncome || undefined;
+        next.category = category || undefined;
+        // Remarks only mean something alongside a category.
+        next.categoryRemarks = (category && categoryRemarks) || undefined;
       }
       return next;
     });

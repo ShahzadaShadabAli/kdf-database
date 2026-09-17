@@ -121,7 +121,7 @@ export default async function KdfViewPage({ params }) {
                 </div>
                 <div>
                   <div className="k">Nature of Disability</div>
-                  <div className="v">{found.natureOfDisability}</div>
+                  <div className="v">{found.natureOfDisability || "—"}</div>
                 </div>
                 <div>
                   <div className="k">Cause of Disability</div>

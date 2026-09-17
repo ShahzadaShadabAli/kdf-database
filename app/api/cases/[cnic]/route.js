@@ -77,9 +77,9 @@ export async function PUT(req, { params }) {
         email: data.email || undefined,
         assistiveDevices: data.assistiveDevices || undefined,
         disabilityType: data.disabilityType,
-        natureOfDisability: data.natureOfDisability || undefined,
-        causeOfDisability: data.causeOfDisability || undefined,
-        jobType: data.jobType || undefined,
+        // Nature, cause and job type (S. No. 9-11) aren't KDF's to edit —
+        // Social Welfare may already have entered them while printing the
+        // application form — so they carry over from `found` untouched.
         sourceOfIncome: data.sourceOfIncome || undefined,
         presentAddress: data.presentAddress,
         permanentAddress: data.permanentAddress,

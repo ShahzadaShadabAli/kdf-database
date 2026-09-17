@@ -23,9 +23,6 @@ const EMPTY_NEW_FORM = {
   email: "",
   assistiveDevices: "",
   disabilityType: "Physically",
-  natureOfDisability: "",
-  causeOfDisability: "",
-  jobType: "",
   sourceOfIncome: "",
   presentAddress: { ...EMPTY_ADDRESS },
   permanentAddress: { ...EMPTY_ADDRESS },
@@ -341,26 +338,6 @@ export function KdfForm({ mode = "create", initialData = null }) {
                     <option value={form.disabilityType}>{form.disabilityType} (legacy — pick a current option)</option>
                   )}
                 </select>
-              </div>
-              <div className="field">
-                <label>Nature of Disability</label>
-                <input
-                  value={form.natureOfDisability}
-                  onChange={(e) => update("natureOfDisability", e.target.value)}
-                  placeholder="Left for Social Welfare to fill in once assessed"
-                />
-              </div>
-              <div className="field">
-                <label>Cause of Disability</label>
-                <input
-                  value={form.causeOfDisability}
-                  onChange={(e) => update("causeOfDisability", e.target.value)}
-                  placeholder="e.g. by birth, accident, disease"
-                />
-              </div>
-              <div className="field">
-                <label>Type of Job Can Do</label>
-                <input value={form.jobType} onChange={(e) => update("jobType", e.target.value)} />
               </div>
               <div className="field">
                 <label>Source of Income</label>
