@@ -5,8 +5,9 @@ import { Topbar } from "@/components/Topbar";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { formatDob } from "@/lib/dob";
-import { caseGender, caseMaritalStatus, relationName } from "@/lib/caseOptions";
+import { caseGender, caseMaritalStatus, kdfCanDelete, relationName } from "@/lib/caseOptions";
 import { OldCaseMoreDetails } from "@/components/OldCaseMoreDetails";
+import { DeleteCaseButton } from "../../DeleteCaseButton";
 
 export default async function KdfViewPage({ params }) {
   const session = await getServerSession(authOptions);
@@ -164,15 +165,20 @@ export default async function KdfViewPage({ params }) {
               </>
             )}
           </div>
-          {(found.status === "referred" || found.caseType === "old") && (
-            <Link
-              href={`/kdf/${encodeURIComponent(found.cnic)}`}
-              className="btn ghost"
-              style={{ textDecoration: "none" }}
-            >
-              Edit case
-            </Link>
-          )}
+          <div style={{ display: "flex", gap: 10 }}>
+            {(found.status === "referred" || found.caseType === "old") && (
+              <Link
+                href={`/kdf/${encodeURIComponent(found.cnic)}`}
+                className="btn ghost"
+                style={{ textDecoration: "none" }}
+              >
+                Edit case
+              </Link>
+            )}
+            {kdfCanDelete(found) && (
+              <DeleteCaseButton cnic={found.cnic} caseNo={found.caseNo} name={found.name} redirectTo="/kdf" size="normal" />
+            )}
+          </div>
         </div>
 
         {(found.status === "verified" || found.status === "rejected") && (

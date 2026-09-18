@@ -4,12 +4,13 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { WithdrawButton } from "./WithdrawButton";
 import { RestoreButton } from "./RestoreButton";
+import { DeleteCaseButton } from "./DeleteCaseButton";
 import { CaseFilterBar } from "@/components/CaseFilterBar";
 import { EMPTY_CASE_FILTERS, hasActiveCaseFilters, matchesCaseFilters } from "@/lib/caseFilters";
 import { CnicSearch, HighlightedCnic } from "@/components/CnicSearch";
 import { ExportButtons } from "@/components/ExportButtons";
 import { formatDob } from "@/lib/dob";
-import { caseGender, caseMaritalStatus, relationText } from "@/lib/caseOptions";
+import { caseGender, caseMaritalStatus, kdfCanDelete, relationText } from "@/lib/caseOptions";
 
 function formatAddress(addr) {
   if (!addr) return "—";
@@ -104,6 +105,7 @@ function CaseTable({ cases, showEdit, cnicQuery, emptyLabel }) {
                   )}
                   {showEdit && <WithdrawButton cnic={c.cnic} />}
                   {!showEdit && c.status === "withdrawn" && <RestoreButton cnic={c.cnic} />}
+                  {kdfCanDelete(c) && <DeleteCaseButton cnic={c.cnic} caseNo={c.caseNo} name={c.name} />}
                 </div>
               </td>
             </tr>

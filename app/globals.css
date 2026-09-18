@@ -325,6 +325,24 @@ input.derived:focus {
   font-weight: 500;
 }
 
+/* destructive actions (permanent delete) */
+.btn.ghost.danger {
+  color: var(--terracotta);
+  border-color: #e6c6bc;
+}
+
+.btn.ghost.danger:hover {
+  background: #fbefeb;
+}
+
+.btn.danger-solid {
+  background: var(--terracotta);
+}
+
+.btn.danger-solid:hover {
+  background: #97381f;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -809,6 +827,13 @@ a.row:hover {
   background: var(--card);
   color: var(--ink);
   box-shadow: 0 16px 48px rgba(27, 31, 28, 0.22);
+}
+
+/* A dialog opened from a table row still inherits the cell's text styles. */
+.assess-dialog {
+  white-space: normal;
+  text-align: left;
+  font-weight: 400;
 }
 
 .assess-dialog::backdrop {

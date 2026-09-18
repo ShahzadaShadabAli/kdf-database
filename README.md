@@ -174,6 +174,16 @@ top-right of the form (new is the default):
    Social Welfare's **Completed** table (the register, sorted by
    certificate number); a rejected one into a separate **Rejected** table.
 
+**Deleting a case.** KDF can also delete a case permanently — its **Delete**
+button (in the case lists and on the case's view page) asks for DELETE to
+be typed before it acts. That's for cases entered by mistake; unlike
+Withdraw, it can't be undone. KDF can delete referred, withdrawn and old
+cases, but not a new case Social Welfare has already verified or rejected:
+that's an official decision, and a verified one is in the certificate
+register. A deleted case's number isn't reused, and a short note of it —
+case number, status, who deleted it and when, but no personal details — is
+kept in the `deletions` collection so the gap can be accounted for.
+
 **Rejected cases are kept out of anything printed.** They have their own
 table on both `/kdf` and `/swd`, that table is hidden when the page is
 printed, and the Excel register download contains verified cases only.
@@ -319,6 +329,7 @@ type of disability won't match a type filter.
 | `GET /api/cases/[cnic]` | kdf · swd | Fetch one case |
 | `PUT /api/cases/[cnic]` | kdf | Edit, CNIC included — referred only |
 | `DELETE /api/cases/[cnic]` | kdf | Withdraw (soft-delete) — referred only |
+| `DELETE /api/cases/[cnic]/permanent` | kdf | Delete for good — referred, withdrawn or old cases |
 | `POST /api/cases/[cnic]/restore` | kdf | Withdrawn → referred |
 | `POST /api/cases/[cnic]/decision` | swd | Referred → verified/rejected |
 | `PUT /api/cases/[cnic]/certificate-no` | swd | Set the certificate / register number |
