@@ -95,7 +95,6 @@ function CompletedCaseTable({ cases, emptyLabel, cnicQuery }) {
             <th>Address</th>
             <th>Contact Cell No.</th>
             <th>Certificate No.</th>
-            <th>Status</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -115,9 +114,6 @@ function CompletedCaseTable({ cases, emptyLabel, cnicQuery }) {
               <td>{c.caseType === "old" ? formatAddress(c.address) : formatAddress(c.presentAddress)}</td>
               <td>{c.phone}</td>
               <td className="mono">{c.certificateNo || "—"}</td>
-              <td>
-                <span className={`badge ${c.status}`}>{c.status}</span>
-              </td>
               <td>
                 <Link
                   href={`/swd/${encodeURIComponent(c.cnic)}`}
@@ -142,7 +138,10 @@ export function SwdCaseSections({ cases }) {
 
   const filtered = useMemo(() => cases.filter((c) => matchesCaseFilters(c, filters)), [cases, filters]);
   const referred = filtered.filter((c) => c.status === "referred");
-  const completed = filtered.filter((c) => c.status !== "referred").sort(sortByCertificateNo);
+  // The ledger (and its Excel download) is verified cases only; rejected
+  // ones get their own table, which is left out of printouts.
+  const completed = filtered.filter((c) => c.status === "verified").sort(sortByCertificateNo);
+  const rejected = filtered.filter((c) => c.status === "rejected");
 
   return (
     <>
@@ -181,13 +180,22 @@ export function SwdCaseSections({ cases }) {
           Sorted by certificate number.{" "}
           {filtersActive
             ? "\"Download filtered\" exports only the rows matching your current search and filters, in this same order."
-            : "The download includes all completed cases in this same order."}
+            : "The download includes all verified cases in this same order. Rejected cases are listed separately below and aren't in it."}
         </p>
         {showFilters && <CaseFilterBar filters={filters} onChange={setFilters} />}
         <CompletedCaseTable
           cases={completed}
           cnicQuery={filters.cnic}
-          emptyLabel={filtersActive ? "No matching cases." : "No decisions made yet."}
+          emptyLabel={filtersActive ? "No matching cases." : "No verified cases yet."}
+        />
+      </div>
+
+      <div className="card no-print">
+        <h3>Rejected {rejected.length ? `(${rejected.length})` : ""}</h3>
+        <CaseTable
+          cases={rejected}
+          cnicQuery={filters.cnic}
+          emptyLabel={filtersActive ? "No matching cases." : "No rejected cases."}
         />
       </div>
     </>

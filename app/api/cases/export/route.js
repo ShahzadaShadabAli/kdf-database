@@ -27,7 +27,9 @@ export async function GET(req) {
     }
     const filtersActive = hasActiveCaseFilters(filters);
 
-    let cases = (await listCases()).filter((c) => c.status === "verified" || c.status === "rejected");
+    // The register lists certified (verified) cases only — rejected ones are
+    // kept out of it so they never end up in a printout.
+    let cases = (await listCases()).filter((c) => c.status === "verified");
     if (filtersActive) {
       cases = cases.filter((c) => matchesCaseFilters(c, filters));
     }

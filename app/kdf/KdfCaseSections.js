@@ -20,7 +20,7 @@ function CaseTable({ cases, showEdit, cnicQuery, emptyLabel }) {
   if (cases.length === 0) {
     return (
       <div className="empty-note">
-        {emptyLabel || (showEdit ? "No cases awaiting Social Welfare." : "No decided or withdrawn cases yet.")}
+        {emptyLabel || (showEdit ? "No cases awaiting Social Welfare." : "No verified or withdrawn cases yet.")}
       </div>
     );
   }
@@ -122,7 +122,10 @@ export function KdfCaseSections({ cases }) {
 
   const filtered = useMemo(() => cases.filter((c) => matchesCaseFilters(c, filters)), [cases, filters]);
   const referred = filtered.filter((c) => c.status === "referred");
-  const completed = filtered.filter((c) => c.status !== "referred");
+  const completed = filtered.filter((c) => c.status === "verified" || c.status === "withdrawn");
+  // Rejected cases get their own table, left out of printouts and the Excel
+  // register.
+  const rejected = filtered.filter((c) => c.status === "rejected");
 
   return (
     <>
@@ -154,12 +157,22 @@ export function KdfCaseSections({ cases }) {
           </div>
         </h3>
         <p style={{ color: "var(--ink-soft)", fontSize: 12, margin: "-8px 0 12px" }}>
-          The Excel download is the register Social Welfare downloads: verified and rejected cases, sorted by
-          certificate number (withdrawn cases aren&apos;t in it).
+          The Excel download is the register Social Welfare downloads: verified cases, sorted by certificate
+          number (rejected and withdrawn cases aren&apos;t in it).
           {filtersActive ? " \"Download filtered\" includes only the ones matching your current search and filters." : ""}
         </p>
         {showFilters && <CaseFilterBar filters={filters} onChange={setFilters} />}
         <CaseTable cases={completed} showEdit={false} cnicQuery={filters.cnic} emptyLabel={noMatch} />
+      </div>
+
+      <div className="card no-print">
+        <h3>Rejected {rejected.length ? `(${rejected.length})` : ""}</h3>
+        <CaseTable
+          cases={rejected}
+          showEdit={false}
+          cnicQuery={filters.cnic}
+          emptyLabel={noMatch || "No rejected cases."}
+        />
       </div>
     </>
   );

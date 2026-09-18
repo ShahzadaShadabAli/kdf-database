@@ -11,8 +11,8 @@ function exportHref(filters) {
   return qs ? `/api/cases/export?${qs}` : "/api/cases/export";
 }
 
-// The register download — verified and rejected cases in the paper
-// register's layout, sorted by certificate number — offered on both the KDF
+// The register download — verified cases in the paper register's layout,
+// sorted by certificate number — offered on both the KDF
 // and Social Welfare case lists. "Filtered" applies the current CNIC search
 // and filters.
 export function ExportButtons({ filters }) {

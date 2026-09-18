@@ -153,8 +153,8 @@ top-right of the form (new is the default):
 1. **KDF** registers a new case at `/kdf/new` when a disabled applicant
    comes in. A case number (`KDF-000123`, atomically incremented) is
    assigned and the case starts as `status: "referred"`. KDF's own case
-   list (`/kdf`) is split into two tables: **Referred** (still awaiting
-   Social Welfare) and **Completed** (verified, rejected, or withdrawn).
+   list (`/kdf`) is split into three tables: **Referred** (still awaiting
+   Social Welfare), **Completed** (verified or withdrawn) and **Rejected**.
 2. While a case is still **referred**, KDF can edit it (`/kdf/[cnic]`,
    including fixing a CNIC typo) or withdraw it — a soft-delete that pulls
    it out of Social Welfare's queue entirely (their list, their API, and a
@@ -170,8 +170,13 @@ top-right of the form (new is the default):
    exam or the physical certificate it produces is recorded in this app.
 4. When the applicant returns with their DHQ medical certificate, Social
    Welfare opens the case and clicks **Verify** or **Reject** — a one-way
-   decision that moves the case out of Referred and into their own
-   Completed table too.
+   decision that moves the case out of Referred. A verified case goes into
+   Social Welfare's **Completed** table (the register, sorted by
+   certificate number); a rejected one into a separate **Rejected** table.
+
+**Rejected cases are kept out of anything printed.** They have their own
+table on both `/kdf` and `/swd`, that table is hidden when the page is
+printed, and the Excel register download contains verified cases only.
 
 Every submit/edit/withdraw/restore/verify/reject action appends an entry to
 the case's `auditLog` (`action`, `byUser`, `at`) — actions are `submitted`,
@@ -295,10 +300,10 @@ type of disability won't match a type filter.
 | Route | Role | Purpose |
 |---|---|---|
 | `/login` | any | Single sign-in, redirects by role |
-| `/kdf` | kdf | Referred + Completed tables |
+| `/kdf` | kdf | Referred, Completed and Rejected tables |
 | `/kdf/new` | kdf | Register a new case |
 | `/kdf/[cnic]` | kdf | Edit — only while referred |
-| `/swd` | swd | Referred + Completed tables |
+| `/swd` | swd | Referred, Completed (register) and Rejected tables |
 | `/swd/[cnic]` | swd | Full case detail, decision buttons |
 | `/swd/[cnic]/certificate` | swd | Printable referral certificate |
 | `/admin` | admin | Account list |
@@ -318,7 +323,7 @@ type of disability won't match a type filter.
 | `POST /api/cases/[cnic]/decision` | swd | Referred → verified/rejected |
 | `PUT /api/cases/[cnic]/certificate-no` | swd | Set the certificate / register number |
 | `PUT /api/cases/[cnic]/assessment` | swd | Save the application form's S. No. 9–11, 17–21 and field 8 ticks |
-| `GET /api/cases/export` | kdf · swd | Verified + rejected cases as a styled Excel register, sorted by certificate no. (search/filters optional) |
+| `GET /api/cases/export` | kdf · swd | Verified cases as a styled Excel register, sorted by certificate no. (search/filters optional); rejected cases are never included |
 | `POST /api/users` | admin | Create an account, any role |
 | `GET /api/users` | admin | List accounts |
 | `PUT /api/account/password` | any | Change own password — current one required |
