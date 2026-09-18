@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { formatDob } from "@/lib/dob";
+import { relationName } from "@/lib/caseOptions";
 
 function formatAddress(addr) {
   if (!addr) return "";
@@ -240,7 +242,7 @@ export function ApplicationForm({ data }) {
           </div>
           <div className="ffield">
             <span className="flabel">2. S/D/W/O:</span>
-            <span className="fval">{data.sonOf}</span>
+            <span className="fval">{relationName(data)}</span>
           </div>
         </div>
 
@@ -258,7 +260,7 @@ export function ApplicationForm({ data }) {
         <div className="frow">
           <div className="ffield">
             <span className="flabel">5. Date of birth:</span>
-            <span className="fval">{new Date(data.dob).toLocaleDateString()}</span>
+            <span className="fval">{formatDob(data.dob, data.dobYearOnly)}</span>
           </div>
           <div className="ffield">
             <span className="flabel">6. CNIC:</span>

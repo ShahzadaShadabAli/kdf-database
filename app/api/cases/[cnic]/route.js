@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { DbError, getCase, updateCase } from "@/lib/db";
 import { caseCreateSchema } from "@/lib/validation";
+import { yearOnlyDob } from "@/lib/dob";
+import { genderForRelation } from "@/lib/caseOptions";
 
 const CNIC_REGEX = /^\d{5}-\d{7}-\d$/;
 
@@ -66,12 +68,13 @@ export async function PUT(req, { params }) {
         ...found,
         cnic: data.cnic,
         name: data.name,
-        gender: data.gender,
+        gender: genderForRelation(data.guardianRelation),
         maritalStatus: data.maritalStatus,
         guardianRelation: data.guardianRelation,
-        sonOf: data.sonOf,
+        sonOf: data.guardianRelation === "W/O" ? undefined : data.sonOf,
         spouse: data.spouse || undefined,
-        dob: data.dob,
+        dob: data.dobYearOnly ? yearOnlyDob(data.dob.getUTCFullYear()) : data.dob,
+        dobYearOnly: data.dobYearOnly || undefined,
         qualification: data.qualification || undefined,
         phone: data.phone,
         email: data.email || undefined,

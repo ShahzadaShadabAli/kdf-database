@@ -6,6 +6,8 @@ import { WithdrawButton } from "./WithdrawButton";
 import { RestoreButton } from "./RestoreButton";
 import { CaseFilterBar } from "@/components/CaseFilterBar";
 import { EMPTY_CASE_FILTERS, matchesCaseFilters } from "@/lib/caseFilters";
+import { formatDob } from "@/lib/dob";
+import { caseGender, relationText } from "@/lib/caseOptions";
 
 function formatAddress(addr) {
   if (!addr) return "—";
@@ -57,13 +59,13 @@ function CaseTable({ cases, showEdit }) {
               <td className="mono">{c.caseNo}</td>
               <td className="mono">{c.cnic}</td>
               <td>{c.name}</td>
-              <td>{c.gender || "—"}</td>
+              <td>{caseGender(c)}</td>
               <td>{c.maritalStatus || "—"}</td>
               <td>
-                {c.guardianRelation || "S/O"} {c.sonOf}
+                {relationText(c)}
               </td>
               <td>{c.spouse || "—"}</td>
-              <td>{c.dob ? new Date(c.dob).toLocaleDateString() : "—"}</td>
+              <td>{formatDob(c.dob, c.dobYearOnly) || "—"}</td>
               <td>{c.qualification || "—"}</td>
               <td>{c.phone}</td>
               <td>{c.email || "—"}</td>

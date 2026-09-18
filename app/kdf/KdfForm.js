@@ -5,18 +5,20 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CnicInput, CNIC_REGEX } from "@/components/CnicInput";
 import { AddressFields } from "@/components/AddressFields";
+import { DISABILITY_TYPES, RELATIONS, genderForRelation } from "@/lib/caseOptions";
 
 const EMPTY_ADDRESS = { uc: "", tehsil: "", district: "" };
 
 const EMPTY_NEW_FORM = {
   caseType: "new",
   name: "",
-  gender: "Male",
   maritalStatus: "Single",
   guardianRelation: "S/O",
   sonOf: "",
   spouse: "",
   dob: "",
+  dobYearOnly: false,
+  dobYear: "",
   cnic: "",
   qualification: "",
   phone: "",
@@ -33,14 +35,106 @@ const EMPTY_OLD_FORM = {
   name: "",
   guardianRelation: "S/O",
   sonOf: "",
+  spouse: "",
+  disabilityType: "Physically",
   natureOfDisability: "",
   fitness: "Fit",
   dob: "",
+  dobYearOnly: false,
+  dobYear: "",
   cnic: "",
   address: { ...EMPTY_ADDRESS },
   phone: "",
   certificateNo: "",
 };
+
+// Older CNICs sometimes carry only a birth year, so the date of birth can
+// be switched to a year-only entry. It's sent as 1 January of that year with
+// `dobYearOnly: true`; the typed year lives in `dobYear` meanwhile, so
+// switching back restores whatever full date was there before.
+function DobField({ form, update, setForm }) {
+  function toggleYearOnly(yearOnly) {
+    setForm((f) => ({
+      ...f,
+      dobYearOnly: yearOnly,
+      dobYear: yearOnly && !f.dobYear ? f.dob.slice(0, 4) : f.dobYear,
+    }));
+  }
+
+  return (
+    <div className="field">
+      <div className="label-row">
+        <label htmlFor="dob">{form.dobYearOnly ? "Year of Birth" : "Date of Birth"}</label>
+        <label className="inline-check">
+          <input type="checkbox" checked={!!form.dobYearOnly} onChange={(e) => toggleYearOnly(e.target.checked)} />
+          Year only
+        </label>
+      </div>
+      {form.dobYearOnly ? (
+        <input
+          id="dob"
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]{4}"
+          title="Enter the 4-digit year, e.g. 1950"
+          placeholder="e.g. 1950"
+          value={form.dobYear || ""}
+          onChange={(e) => update("dobYear", e.target.value.replace(/\D/g, "").slice(0, 4))}
+          required
+        />
+      ) : (
+        <input id="dob" type="date" value={form.dob} onChange={(e) => update("dob", e.target.value)} required />
+      )}
+    </div>
+  );
+}
+
+// Relation plus the name that follows it. S/O and D/O take the father's
+// name; W/O ("wife of") takes the husband's, which is saved as the spouse.
+function RelationFields({ form, update, setRelation }) {
+  const isWife = form.guardianRelation === "W/O";
+  const nameField = isWife ? "spouse" : "sonOf";
+  return (
+    <>
+      <div className="field">
+        <label htmlFor="relation">Relation</label>
+        <select id="relation" value={form.guardianRelation} onChange={(e) => setRelation(e.target.value)}>
+          {RELATIONS.map((r) => (
+            <option key={r.value} value={r.value}>
+              {r.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="field">
+        <label htmlFor="relation-name">{isWife ? "Husband's Name" : "Father's Name"}</label>
+        <input
+          id="relation-name"
+          value={form[nameField] || ""}
+          onChange={(e) => update(nameField, e.target.value)}
+          required
+        />
+      </div>
+    </>
+  );
+}
+
+function DisabilityTypeField({ form, update }) {
+  const isLegacy = form.disabilityType && !DISABILITY_TYPES.includes(form.disabilityType);
+  return (
+    <div className="field">
+      <label htmlFor="disability-type">Type of Disability</label>
+      <select id="disability-type" value={form.disabilityType} onChange={(e) => update("disabilityType", e.target.value)}>
+        {DISABILITY_TYPES.map((t) => (
+          <option key={t} value={t}>
+            {t}
+          </option>
+        ))}
+        {isLegacy && <option value={form.disabilityType}>{form.disabilityType} (legacy — pick a current option)</option>}
+      </select>
+    </div>
+  );
+}
 
 function addressesEqual(a, b) {
   return a.uc === b.uc && a.tehsil === b.tehsil && a.district === b.district;
@@ -66,6 +160,15 @@ export function KdfForm({ mode = "create", initialData = null }) {
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
+  }
+
+  function setRelation(relation) {
+    setForm((f) => ({
+      ...f,
+      guardianRelation: relation,
+      // A wife can't be single; nudge a new case's marital status to match.
+      ...(relation === "W/O" && f.maritalStatus === "Single" ? { maritalStatus: "Married" } : {}),
+    }));
   }
 
   function switchCaseType(caseType) {
@@ -100,6 +203,20 @@ export function KdfForm({ mode = "create", initialData = null }) {
       return;
     }
 
+    const { dobYear, ...rest } = form;
+    if (form.dobYearOnly) {
+      const year = Number(dobYear);
+      if (!/^\d{4}$/.test(dobYear) || year < 1900 || year > new Date().getFullYear()) {
+        setError(`Year of birth must be a 4-digit year between 1900 and ${new Date().getFullYear()}.`);
+        return;
+      }
+    }
+    const payload = {
+      ...rest,
+      dob: form.dobYearOnly ? `${dobYear}-01-01` : form.dob,
+      dobYearOnly: !!form.dobYearOnly,
+    };
+
     setSubmitting(true);
     try {
       const res = await fetch(
@@ -107,7 +224,7 @@ export function KdfForm({ mode = "create", initialData = null }) {
         {
           method: isEdit ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
+          body: JSON.stringify(payload),
         }
       );
       const data = await res.json();
@@ -180,25 +297,14 @@ export function KdfForm({ mode = "create", initialData = null }) {
               <label>Name of Disabled Person</label>
               <input value={form.name} onChange={(e) => update("name", e.target.value)} required />
             </div>
+            <RelationFields form={form} update={update} setRelation={setRelation} />
+            <DisabilityTypeField form={form} update={update} />
             <div className="field">
-              <label>Relation</label>
-              <select
-                value={form.guardianRelation}
-                onChange={(e) => update("guardianRelation", e.target.value)}
-              >
-                <option value="S/O">S/O (Son of)</option>
-                <option value="D/O">D/O (Daughter of)</option>
-              </select>
-            </div>
-            <div className="field">
-              <label>Father's Name</label>
-              <input value={form.sonOf} onChange={(e) => update("sonOf", e.target.value)} required />
-            </div>
-            <div className="field">
-              <label>Type/Nature of Disability</label>
+              <label>Nature of Disability</label>
               <input
                 value={form.natureOfDisability}
                 onChange={(e) => update("natureOfDisability", e.target.value)}
+                placeholder="as written on the certificate, e.g. Kyphoscoliosis"
                 required
               />
             </div>
@@ -209,10 +315,7 @@ export function KdfForm({ mode = "create", initialData = null }) {
                 <option value="Unfit">Unfit</option>
               </select>
             </div>
-            <div className="field">
-              <label>Date of Birth</label>
-              <input type="date" value={form.dob} onChange={(e) => update("dob", e.target.value)} required />
-            </div>
+            <DobField form={form} update={update} setForm={setForm} />
             <div className="field">
               <label>CNIC</label>
               <CnicInput value={form.cnic} onChange={(v) => update("cnic", v)} required />
@@ -248,12 +351,17 @@ export function KdfForm({ mode = "create", initialData = null }) {
                 <input value={form.name} onChange={(e) => update("name", e.target.value)} required />
               </div>
               <div className="field">
-                <label>Gender</label>
-                <select value={form.gender} onChange={(e) => update("gender", e.target.value)}>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
+                <div className="label-row">
+                  <label htmlFor="gender">Gender</label>
+                  <span className="label-note">set by {form.guardianRelation}</span>
+                </div>
+                <input
+                  id="gender"
+                  className="derived"
+                  value={genderForRelation(form.guardianRelation)}
+                  readOnly
+                  tabIndex={-1}
+                />
               </div>
               <div className="field">
                 <label>Marital Status</label>
@@ -264,32 +372,19 @@ export function KdfForm({ mode = "create", initialData = null }) {
                   <option>Widowed</option>
                 </select>
               </div>
-              <div className="field">
-                <label>Relation</label>
-                <select
-                  value={form.guardianRelation}
-                  onChange={(e) => update("guardianRelation", e.target.value)}
-                >
-                  <option value="S/O">S/O (Son of)</option>
-                  <option value="D/O">D/O (Daughter of)</option>
-                </select>
-              </div>
-              <div className="field">
-                <label>Son / Daughter of</label>
-                <input value={form.sonOf} onChange={(e) => update("sonOf", e.target.value)} required />
-              </div>
-              <div className="field">
-                <label>Spouse (if applicable)</label>
-                <input
-                  value={form.spouse}
-                  onChange={(e) => update("spouse", e.target.value)}
-                  placeholder="Leave blank if not married"
-                />
-              </div>
-              <div className="field">
-                <label>Date of Birth</label>
-                <input type="date" value={form.dob} onChange={(e) => update("dob", e.target.value)} required />
-              </div>
+              <RelationFields form={form} update={update} setRelation={setRelation} />
+              {/* For W/O the husband's name above already is the spouse. */}
+              {form.guardianRelation !== "W/O" && (
+                <div className="field">
+                  <label>Spouse (if applicable)</label>
+                  <input
+                    value={form.spouse}
+                    onChange={(e) => update("spouse", e.target.value)}
+                    placeholder="Leave blank if not married"
+                  />
+                </div>
+              )}
+              <DobField form={form} update={update} setForm={setForm} />
               <div className="field">
                 <label>CNIC</label>
                 <CnicInput value={form.cnic} onChange={(v) => update("cnic", v)} required />
@@ -326,19 +421,7 @@ export function KdfForm({ mode = "create", initialData = null }) {
                   placeholder="e.g. wheelchair — leave blank if none"
                 />
               </div>
-              <div className="field">
-                <label>Type of Disability</label>
-                <select value={form.disabilityType} onChange={(e) => update("disabilityType", e.target.value)}>
-                  <option value="Physically">Physically</option>
-                  <option value="Visually">Visually</option>
-                  <option value="Hearing and Speech">Hearing and Speech</option>
-                  <option value="Mentally Retarded">Mentally Retarded</option>
-                  <option value="Multiple Disabilities">Multiple Disabilities</option>
-                  {(form.disabilityType === "Hearing" || form.disabilityType === "Mentally") && (
-                    <option value={form.disabilityType}>{form.disabilityType} (legacy — pick a current option)</option>
-                  )}
-                </select>
-              </div>
+              <DisabilityTypeField form={form} update={update} />
               <div className="field">
                 <label>Source of Income</label>
                 <input

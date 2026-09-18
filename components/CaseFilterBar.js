@@ -1,6 +1,7 @@
 "use client";
 
 import { EMPTY_CASE_FILTERS } from "@/lib/caseFilters";
+import { DISABILITY_TYPES } from "@/lib/caseOptions";
 
 export function CaseFilterBar({ filters, onChange }) {
   function set(field, value) {
@@ -28,11 +29,22 @@ export function CaseFilterBar({ filters, onChange }) {
           </select>
         </div>
         <div className="field">
-          <label>Disability</label>
+          <label>Type of Disability</label>
+          <select value={filters.disabilityType} onChange={(e) => set("disabilityType", e.target.value)}>
+            <option value="">Any</option>
+            {DISABILITY_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label>Nature of Disability</label>
           <input
-            value={filters.disability}
-            onChange={(e) => set("disability", e.target.value)}
-            placeholder="e.g. visually, physically"
+            value={filters.nature}
+            onChange={(e) => set("nature", e.target.value)}
+            placeholder="e.g. polio, kyphoscoliosis"
           />
         </div>
         <div className="field">
@@ -66,16 +78,16 @@ export function CaseFilterBar({ filters, onChange }) {
           <label>District</label>
           <input value={filters.district} onChange={(e) => set("district", e.target.value)} />
         </div>
-      </div>
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <button
-          type="button"
-          className="btn ghost"
-          style={{ padding: "5px 12px", fontSize: 12 }}
-          onClick={() => onChange(EMPTY_CASE_FILTERS)}
-        >
-          Clear filters
-        </button>
+        <div className="filter-actions">
+          <button
+            type="button"
+            className="btn ghost"
+            style={{ padding: "5px 12px", fontSize: 12 }}
+            onClick={() => onChange(EMPTY_CASE_FILTERS)}
+          >
+            Clear filters
+          </button>
+        </div>
       </div>
     </div>
   );

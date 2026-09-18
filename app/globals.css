@@ -145,6 +145,69 @@ input.mono {
   margin-top: 4px;
 }
 
+/* a field label with a small inline option beside it, e.g. "Year only" */
+.label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.label-row .inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  /* no taller than a plain label, so this field's input lines up with its
+     neighbour's */
+  height: 14px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.label-row .label-note {
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+}
+
+/* a value the form works out for itself, e.g. gender from S/O, D/O, W/O */
+input.derived {
+  background: var(--page);
+  color: var(--ink-soft);
+  cursor: default;
+}
+
+input.derived:focus {
+  outline: none;
+}
+
+/* the filter panel's last row: District, then Clear filters */
+.filter-actions {
+  grid-column: span 2;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 720px) {
+  .filter-actions {
+    grid-column: auto;
+  }
+}
+
+.label-row .inline-check input {
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  padding: 0;
+}
+
 .checkbox-row {
   display: flex;
   align-items: center;

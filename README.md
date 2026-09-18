@@ -178,13 +178,21 @@ answerable.
 
 ## Case fields
 
-**New case:** Name, gender, marital status, son/daughter of, spouse
-(optional), date of birth, CNIC, qualification (optional), phone, email
+**New case:** Name, marital status, relation (S/O, D/O or W/O) with the
+father's or husband's name, spouse (optional), date of birth, CNIC, qualification (optional), phone, email
 (optional), assistive devices provided (optional), type of disability
 (Physically / Visually / Hearing and Speech / Mentally Retarded / Multiple
 Disabilities), source of income (optional), and two addresses — present
 and permanent, each broken into UC / Tehsil / District rather than one
 free-text field, with a "same as present" option.
+
+**Year-only dates of birth.** Some older CNICs record only a birth year, so
+both KDF forms (new and old case) have a **Year only** tick box beside Date
+of Birth. A year-only date is stored as 1 January of that year with
+`dobYearOnly: true`, which keeps sorting and the age filter working (ages
+are counted from 1 January), and every table, detail page, printed form and
+Excel export shows the year alone. Dates of birth must fall between 1900
+and today.
 
 These match the government's own paper form — Application for Disability
 Certificate/Supportive Aid (Social Welfare Department Gilgit-Baltistan,
@@ -232,20 +240,35 @@ plus a new "Multiple Disabilities" option) — the old labels are still
 accepted so pre-existing cases saved under them stay editable; the intake
 form itself only offers the current five.
 
-**Old case:** Name, S/O or D/O + father's/husband's name, type/nature of
-disability (free text), fit/unfit, date of birth, CNIC, a single free-text
-address, contact number, and the original paper certificate number. See
-"Case types" above.
+**Old case:** Name, relation (S/O, D/O or W/O) with the father's or
+husband's name, type of disability (the same five options as a new case),
+nature of disability (free text, as written on the certificate), fit/unfit,
+date of birth, CNIC, a UC/Tehsil/District address, contact number, and the
+original paper certificate number. See "Case types" above.
+
+**Relation and gender.** Both forms offer S/O (son of), D/O (daughter of)
+and W/O (wife of). The relation settles gender — S/O is male, D/O and W/O
+are female — so there's no separate gender choice: the new-case form shows
+the gender it has worked out, and the server sets it from the relation
+whatever the client sends. S/O and D/O are followed by the father's name
+(`sonOf`). W/O is followed by the husband's name, which is the applicant's
+spouse, so it's stored as `spouse` (and a W/O applicant can't be marked
+single). Everywhere a record shows "S/O …" — tables, case pages, field 2
+(S/D/W/O) of both printed forms, the Excel register — a W/O record shows
+"W/O" and the husband's name.
 
 ## Searching and filtering
 
 Both `/kdf` and `/swd` case tables have a filter bar above them — gender,
-a free-text disability search (matches type or nature of disability),
-an age range (computed from date of birth), and free-text UC/tehsil/district
-matches. Filtering happens client-side against the already-loaded case
-list, so it updates instantly with no page reload. Old-case records don't
-have gender or a structured address, so a filter on those fields simply
-won't match them unless left blank.
+type of disability (a dropdown of the five types; records saved under the
+old "Hearing"/"Mentally" labels match their current names), a free-text
+nature-of-disability search, an age range (computed from date of birth),
+and free-text UC/tehsil/district matches. Filtering happens client-side
+against the already-loaded case list, so it updates instantly with no page
+reload; Social Welfare's filtered Excel download applies the same filters
+on the server. Gender follows the relation, so old cases saved before
+gender was stored still filter correctly. Old cases saved before they had a
+type of disability won't match a type filter.
 
 ## Pages & API
 

@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { DbError, createCase, listCases } from "@/lib/db";
 import { caseCreateSchema } from "@/lib/validation";
+import { yearOnlyDob } from "@/lib/dob";
+import { genderForRelation } from "@/lib/caseOptions";
 
 // Every response depends on who is signed in, so this must never be rendered
 // at build time or cached. Declaring it up front also stops `next build` from
@@ -38,6 +40,12 @@ export async function POST(req) {
 
     const created = await createCase({
       ...data,
+      dob: data.dobYearOnly ? yearOnlyDob(data.dob.getUTCFullYear()) : data.dob,
+      dobYearOnly: data.dobYearOnly || undefined,
+      // The relation decides both: S/O is male, D/O and W/O female, and a
+      // W/O's name is the husband's, kept as the spouse.
+      gender: genderForRelation(data.guardianRelation),
+      sonOf: data.guardianRelation === "W/O" ? undefined : data.sonOf,
       spouse: data.spouse || undefined,
       qualification: data.qualification || undefined,
       email: data.email || undefined,

@@ -6,6 +6,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { DecisionActions } from "./DecisionActions";
 import { CertificateNoForm } from "./CertificateNoForm";
+import { formatDob } from "@/lib/dob";
+import { caseGender, relationName } from "@/lib/caseOptions";
 
 export default async function SwdDetailPage({ params }) {
   const session = await getServerSession(authOptions);
@@ -55,10 +57,14 @@ export default async function SwdDetailPage({ params }) {
               <>
                 <div>
                   <div className="k">{found.guardianRelation || "S/O"}</div>
-                  <div className="v">{found.sonOf}</div>
+                  <div className="v">{relationName(found)}</div>
                 </div>
                 <div>
-                  <div className="k">Type/Nature of Disability</div>
+                  <div className="k">Type of Disability</div>
+                  <div className="v">{found.disabilityType || "—"}</div>
+                </div>
+                <div>
+                  <div className="k">Nature of Disability</div>
                   <div className="v">{found.natureOfDisability}</div>
                 </div>
                 <div>
@@ -67,7 +73,7 @@ export default async function SwdDetailPage({ params }) {
                 </div>
                 <div>
                   <div className="k">Date of Birth</div>
-                  <div className="v">{new Date(found.dob).toLocaleDateString()}</div>
+                  <div className="v">{formatDob(found.dob, found.dobYearOnly)}</div>
                 </div>
                 <div>
                   <div className="k">Contact Cell No.</div>
@@ -88,7 +94,7 @@ export default async function SwdDetailPage({ params }) {
               <>
                 <div>
                   <div className="k">Gender</div>
-                  <div className="v">{found.gender || "—"}</div>
+                  <div className="v">{caseGender(found)}</div>
                 </div>
                 <div>
                   <div className="k">Marital Status</div>
@@ -96,7 +102,7 @@ export default async function SwdDetailPage({ params }) {
                 </div>
                 <div>
                   <div className="k">{found.guardianRelation || "S/O"}</div>
-                  <div className="v">{found.sonOf}</div>
+                  <div className="v">{relationName(found)}</div>
                 </div>
                 <div>
                   <div className="k">Spouse</div>
@@ -104,7 +110,7 @@ export default async function SwdDetailPage({ params }) {
                 </div>
                 <div>
                   <div className="k">Date of Birth</div>
-                  <div className="v">{new Date(found.dob).toLocaleDateString()}</div>
+                  <div className="v">{formatDob(found.dob, found.dobYearOnly)}</div>
                 </div>
                 <div>
                   <div className="k">Qualification</div>

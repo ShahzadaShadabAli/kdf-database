@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { CaseFilterBar } from "@/components/CaseFilterBar";
 import { EMPTY_CASE_FILTERS, hasActiveCaseFilters, matchesCaseFilters, sortByCertificateNo } from "@/lib/caseFilters";
+import { formatDob } from "@/lib/dob";
+import { caseGender, relationText } from "@/lib/caseOptions";
 
 function formatAddress(addr) {
   if (!addr) return "—";
@@ -41,8 +43,8 @@ function CaseTable({ cases, emptyLabel }) {
               <td className="mono">{c.caseNo}</td>
               <td className="mono">{c.cnic}</td>
               <td>{c.name}</td>
-              <td>{c.gender || "—"}</td>
-              <td>{c.dob ? new Date(c.dob).toLocaleDateString() : "—"}</td>
+              <td>{caseGender(c)}</td>
+              <td>{formatDob(c.dob, c.dobYearOnly) || "—"}</td>
               <td>{c.phone}</td>
               <td>{c.disabilityType || "—"}</td>
               <td>{c.natureOfDisability}</td>
@@ -98,11 +100,11 @@ function CompletedCaseTable({ cases, emptyLabel }) {
             <tr key={c.cnic}>
               <td>{i + 1}</td>
               <td>
-                {c.name} {c.guardianRelation || "S/O"} {c.sonOf}
+                {c.name} {relationText(c)}
               </td>
               <td>{c.natureOfDisability}</td>
               <td>{c.fitness || "—"}</td>
-              <td>{c.dob ? new Date(c.dob).toLocaleDateString() : "—"}</td>
+              <td>{formatDob(c.dob, c.dobYearOnly) || "—"}</td>
               <td className="mono">{c.cnic}</td>
               <td>{c.caseType === "old" ? formatAddress(c.address) : formatAddress(c.presentAddress)}</td>
               <td>{c.phone}</td>

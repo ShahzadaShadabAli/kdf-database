@@ -57,10 +57,12 @@ export default async function DisabilityCertificatePage({ params }) {
   const data = {
     cnic: found.cnic,
     name: found.name,
-    sonOf: found.sonOf,
+    guardianRelation: found.guardianRelation || "S/O",
+    sonOf: found.sonOf || "",
     maritalStatus: found.maritalStatus,
     spouse: found.spouse || "",
     dob: found.dob,
+    dobYearOnly: !!found.dobYearOnly,
     qualification: found.qualification || "",
     disabilityType: found.disabilityType || "",
     natureOfDisability: found.natureOfDisability,
