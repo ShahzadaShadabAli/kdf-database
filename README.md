@@ -318,7 +318,7 @@ type of disability won't match a type filter.
 | `POST /api/cases/[cnic]/decision` | swd | Referred → verified/rejected |
 | `PUT /api/cases/[cnic]/certificate-no` | swd | Set the certificate / register number |
 | `PUT /api/cases/[cnic]/assessment` | swd | Save the application form's S. No. 9–11, 17–21 and field 8 ticks |
-| `GET /api/cases/export` | swd | Completed cases as a styled Excel file (filters optional) |
+| `GET /api/cases/export` | kdf · swd | Verified + rejected cases as a styled Excel register, sorted by certificate no. (search/filters optional) |
 | `POST /api/users` | admin | Create an account, any role |
 | `GET /api/users` | admin | List accounts |
 | `PUT /api/account/password` | any | Change own password — current one required |

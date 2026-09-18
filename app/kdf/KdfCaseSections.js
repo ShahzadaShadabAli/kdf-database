@@ -7,6 +7,7 @@ import { RestoreButton } from "./RestoreButton";
 import { CaseFilterBar } from "@/components/CaseFilterBar";
 import { EMPTY_CASE_FILTERS, hasActiveCaseFilters, matchesCaseFilters } from "@/lib/caseFilters";
 import { CnicSearch, HighlightedCnic } from "@/components/CnicSearch";
+import { ExportButtons } from "@/components/ExportButtons";
 import { formatDob } from "@/lib/dob";
 import { caseGender, caseMaritalStatus, relationText } from "@/lib/caseOptions";
 
@@ -140,15 +141,23 @@ export function KdfCaseSections({ cases }) {
       <div className="card">
         <h3 style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span>Completed {completed.length ? `(${completed.length})` : ""}</span>
-          <button
-            type="button"
-            className="btn ghost"
-            style={{ padding: "5px 12px", fontSize: 12 }}
-            onClick={() => setShowFilters((v) => !v)}
-          >
-            {showFilters ? "Hide filters" : "Filter / Search"}
-          </button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              className="btn ghost"
+              style={{ padding: "5px 12px", fontSize: 12 }}
+              onClick={() => setShowFilters((v) => !v)}
+            >
+              {showFilters ? "Hide filters" : "Filter / Search"}
+            </button>
+            <ExportButtons filters={filters} />
+          </div>
         </h3>
+        <p style={{ color: "var(--ink-soft)", fontSize: 12, margin: "-8px 0 12px" }}>
+          The Excel download is the register Social Welfare downloads: verified and rejected cases, sorted by
+          certificate number (withdrawn cases aren&apos;t in it).
+          {filtersActive ? " \"Download filtered\" includes only the ones matching your current search and filters." : ""}
+        </p>
         {showFilters && <CaseFilterBar filters={filters} onChange={setFilters} />}
         <CaseTable cases={completed} showEdit={false} cnicQuery={filters.cnic} emptyLabel={noMatch} />
       </div>

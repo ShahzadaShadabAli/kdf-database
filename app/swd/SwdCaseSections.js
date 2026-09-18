@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CaseFilterBar } from "@/components/CaseFilterBar";
 import { EMPTY_CASE_FILTERS, hasActiveCaseFilters, matchesCaseFilters, sortByCertificateNo } from "@/lib/caseFilters";
 import { CnicSearch, HighlightedCnic } from "@/components/CnicSearch";
+import { ExportButtons } from "@/components/ExportButtons";
 import { formatDob } from "@/lib/dob";
 import { caseGender, relationText } from "@/lib/caseOptions";
 
@@ -134,15 +135,6 @@ function CompletedCaseTable({ cases, emptyLabel, cnicQuery }) {
   );
 }
 
-function exportHref(filters) {
-  const params = new URLSearchParams();
-  Object.entries(filters).forEach(([key, value]) => {
-    if (value !== "" && value != null) params.set(key, value);
-  });
-  const qs = params.toString();
-  return qs ? `/api/cases/export?${qs}` : "/api/cases/export";
-}
-
 export function SwdCaseSections({ cases }) {
   const [filters, setFilters] = useState(EMPTY_CASE_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
@@ -182,22 +174,7 @@ export function SwdCaseSections({ cases }) {
             >
               {showFilters ? "Hide filters" : "Filter / Search"}
             </button>
-            {filtersActive && (
-              <a
-                href={exportHref(filters)}
-                className="btn ghost"
-                style={{ padding: "5px 12px", fontSize: 12, textDecoration: "none" }}
-              >
-                Download filtered (Excel)
-              </a>
-            )}
-            <a
-              href="/api/cases/export"
-              className="btn ghost"
-              style={{ padding: "5px 12px", fontSize: 12, textDecoration: "none" }}
-            >
-              Download all (Excel)
-            </a>
+            <ExportButtons filters={filters} />
           </div>
         </h3>
         <p style={{ color: "var(--ink-soft)", fontSize: 12, margin: "-8px 0 12px" }}>

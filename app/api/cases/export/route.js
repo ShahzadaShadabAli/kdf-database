@@ -10,10 +10,12 @@ import { buildCompletedCasesWorkbook } from "@/lib/caseExport";
 // test-rendering it and logging a "Dynamic server usage" error.
 export const dynamic = "force-dynamic";
 
+// The register of decided cases, as an Excel file. Both KDF and Social
+// Welfare can download it; admins manage accounts and don't see cases.
 export async function GET(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "swd") {
+    if (!session || !["kdf", "swd"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
