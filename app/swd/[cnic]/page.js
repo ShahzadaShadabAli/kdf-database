@@ -7,7 +7,8 @@ import Link from "next/link";
 import { DecisionActions } from "./DecisionActions";
 import { CertificateNoForm } from "./CertificateNoForm";
 import { formatDob } from "@/lib/dob";
-import { caseGender, relationName } from "@/lib/caseOptions";
+import { caseGender, caseMaritalStatus, relationName } from "@/lib/caseOptions";
+import { OldCaseMoreDetails } from "@/components/OldCaseMoreDetails";
 
 export default async function SwdDetailPage({ params }) {
   const session = await getServerSession(authOptions);
@@ -89,6 +90,7 @@ export default async function SwdDetailPage({ params }) {
                     UC {found.address?.uc}, Tehsil {found.address?.tehsil}, District {found.address?.district}
                   </div>
                 </div>
+                <OldCaseMoreDetails found={found} />
               </>
             ) : (
               <>
@@ -98,7 +100,7 @@ export default async function SwdDetailPage({ params }) {
                 </div>
                 <div>
                   <div className="k">Marital Status</div>
-                  <div className="v">{found.maritalStatus}</div>
+                  <div className="v">{caseMaritalStatus(found) || "—"}</div>
                 </div>
                 <div>
                   <div className="k">{found.guardianRelation || "S/O"}</div>

@@ -47,6 +47,9 @@ export async function POST(req) {
       gender: genderForRelation(data.guardianRelation),
       sonOf: data.guardianRelation === "W/O" ? undefined : data.sonOf,
       spouse: data.spouse || undefined,
+      // A wife is married; an old case records it even though its form
+      // doesn't ask.
+      maritalStatus: data.maritalStatus || (data.guardianRelation === "W/O" ? "Married" : undefined),
       qualification: data.qualification || undefined,
       email: data.email || undefined,
       assistiveDevices: data.assistiveDevices || undefined,

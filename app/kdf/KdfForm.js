@@ -124,7 +124,17 @@ function DisabilityTypeField({ form, update }) {
   return (
     <div className="field">
       <label htmlFor="disability-type">Type of Disability</label>
-      <select id="disability-type" value={form.disabilityType} onChange={(e) => update("disabilityType", e.target.value)}>
+      <select
+        id="disability-type"
+        value={form.disabilityType}
+        onChange={(e) => update("disabilityType", e.target.value)}
+        required
+      >
+        {!form.disabilityType && (
+          <option value="" disabled>
+            Choose a type…
+          </option>
+        )}
         {DISABILITY_TYPES.map((t) => (
           <option key={t} value={t}>
             {t}
@@ -136,8 +146,49 @@ function DisabilityTypeField({ form, update }) {
   );
 }
 
+// Gender isn't chosen: it follows the relation (S/O male, D/O and W/O female).
+function GenderField({ form }) {
+  return (
+    <div className="field">
+      <div className="label-row">
+        <label htmlFor="gender">Gender</label>
+        <span className="label-note">set by {form.guardianRelation}</span>
+      </div>
+      <input id="gender" className="derived" value={genderForRelation(form.guardianRelation)} readOnly tabIndex={-1} />
+    </div>
+  );
+}
+
+// `allowBlank` is for old cases, whose paper record may not say. A W/O
+// applicant is a wife, so "Single" (and leaving it blank) is off the table.
+function MaritalStatusField({ form, update, allowBlank = false }) {
+  const isWife = form.guardianRelation === "W/O";
+  return (
+    <div className="field">
+      <label htmlFor="marital-status">Marital Status</label>
+      <select id="marital-status" value={form.maritalStatus || ""} onChange={(e) => update("maritalStatus", e.target.value)}>
+        {allowBlank && (
+          <option value="" disabled={isWife}>
+            Not recorded
+          </option>
+        )}
+        <option value="Single" disabled={isWife}>
+          Single
+        </option>
+        <option value="Married">Married</option>
+        <option value="Divorced">Divorced</option>
+        <option value="Widowed">Widowed</option>
+      </select>
+    </div>
+  );
+}
+
 function addressesEqual(a, b) {
   return a.uc === b.uc && a.tehsil === b.tehsil && a.district === b.district;
+}
+
+function hasAnyAddress(addr) {
+  return !!addr && [addr.uc, addr.tehsil, addr.district].some((v) => v && v.trim());
 }
 
 export function KdfForm({ mode = "create", initialData = null }) {
@@ -147,11 +198,17 @@ export function KdfForm({ mode = "create", initialData = null }) {
   // The CNIC this record was fetched under — used to address the API route
   // even if the user edits the CNIC field itself (e.g. fixing a typo).
   const [originalCnic] = useState(initialData?.cnic || null);
-  const [sameAsPresent, setSameAsPresent] = useState(
-    !!initialData &&
-      initialData.caseType !== "old" &&
-      addressesEqual(initialData.presentAddress, initialData.permanentAddress)
-  );
+  const [sameAsPresent, setSameAsPresent] = useState(() => {
+    if (!initialData) return false;
+    // An old case's single address plays the part of the present address.
+    if (initialData.caseType === "old") {
+      return (
+        hasAnyAddress(initialData.permanentAddress) &&
+        addressesEqual(initialData.address, initialData.permanentAddress)
+      );
+    }
+    return addressesEqual(initialData.presentAddress, initialData.permanentAddress);
+  });
   const [cnicError, setCnicError] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -166,8 +223,12 @@ export function KdfForm({ mode = "create", initialData = null }) {
     setForm((f) => ({
       ...f,
       guardianRelation: relation,
-      // A wife can't be single; nudge a new case's marital status to match.
-      ...(relation === "W/O" && f.maritalStatus === "Single" ? { maritalStatus: "Married" } : {}),
+      // A wife is married: move marital status off "Single" (or, on an old
+      // case's edit form, off "Not recorded"). The old-case entry form has no
+      // marital field, so nothing is set behind KDF's back there.
+      ...(relation === "W/O" && (f.maritalStatus === "Single" || (isEdit && f.caseType === "old" && !f.maritalStatus))
+        ? { maritalStatus: "Married" }
+        : {}),
     }));
   }
 
@@ -181,7 +242,7 @@ export function KdfForm({ mode = "create", initialData = null }) {
   function updatePresentAddress(value) {
     setForm((f) => ({
       ...f,
-      presentAddress: value,
+      [f.caseType === "old" ? "address" : "presentAddress"]: value,
       permanentAddress: sameAsPresent ? value : f.permanentAddress,
     }));
   }
@@ -189,7 +250,7 @@ export function KdfForm({ mode = "create", initialData = null }) {
   function toggleSameAsPresent(checked) {
     setSameAsPresent(checked);
     if (checked) {
-      setForm((f) => ({ ...f, permanentAddress: f.presentAddress }));
+      setForm((f) => ({ ...f, permanentAddress: f.caseType === "old" ? f.address : f.presentAddress }));
     }
   }
 
@@ -216,6 +277,9 @@ export function KdfForm({ mode = "create", initialData = null }) {
       dob: form.dobYearOnly ? `${dobYear}-01-01` : form.dob,
       dobYearOnly: !!form.dobYearOnly,
     };
+    if (payload.caseType === "old" && !hasAnyAddress(payload.permanentAddress)) {
+      delete payload.permanentAddress;
+    }
 
     setSubmitting(true);
     try {
@@ -256,7 +320,13 @@ export function KdfForm({ mode = "create", initialData = null }) {
         }}
       >
         <h3 style={{ margin: 0, padding: 0, border: "none" }}>
-          {isEdit ? "Edit Case — Applicant Details" : isOld ? "Old Case — Applicant Details" : "New Case — Applicant Details"}
+          {isEdit
+            ? isOld
+              ? "Edit Old Case — Applicant Details"
+              : "Edit Case — Applicant Details"
+            : isOld
+            ? "Old Case — Applicant Details"
+            : "New Case — Applicant Details"}
         </h3>
         {!isEdit && (
           <div style={{ display: "flex", gap: 6 }}>
@@ -341,7 +411,74 @@ export function KdfForm({ mode = "create", initialData = null }) {
             </div>
           </div>
           <div className="subhead" style={{ marginTop: 16 }}>Address</div>
-          <AddressFields value={form.address} onChange={(v) => update("address", v)} />
+          <AddressFields value={form.address} onChange={updatePresentAddress} />
+
+          {isEdit && (
+            <>
+              <div className="subhead" style={{ marginTop: 16 }}>More Details</div>
+              <p style={{ color: "var(--ink-soft)", fontSize: 12.5, margin: "0 0 12px" }}>
+                The same details a new case records. The paper register doesn&apos;t have them, so add whatever is
+                known — every one is optional.
+              </p>
+              <div className="grid">
+                <GenderField form={form} />
+                <MaritalStatusField form={form} update={update} allowBlank />
+                {/* For W/O the husband's name above already is the spouse. */}
+                {form.guardianRelation !== "W/O" && (
+                  <div className="field">
+                    <label>Spouse (if applicable)</label>
+                    <input
+                      value={form.spouse}
+                      onChange={(e) => update("spouse", e.target.value)}
+                      placeholder="Leave blank if not married"
+                    />
+                  </div>
+                )}
+                <div className="field">
+                  <label>Qualification</label>
+                  <input value={form.qualification} onChange={(e) => update("qualification", e.target.value)} />
+                </div>
+                <div className="field">
+                  <label>Email</label>
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => update("email", e.target.value)}
+                    placeholder="Optional"
+                  />
+                </div>
+                <div className="field">
+                  <label>Assistive Devices Provided</label>
+                  <input
+                    value={form.assistiveDevices}
+                    onChange={(e) => update("assistiveDevices", e.target.value)}
+                    placeholder="e.g. wheelchair — leave blank if none"
+                  />
+                </div>
+                <div className="field">
+                  <label>Source of Income</label>
+                  <input value={form.sourceOfIncome} onChange={(e) => update("sourceOfIncome", e.target.value)} />
+                </div>
+              </div>
+
+              <div className="subhead" style={{ marginTop: 16 }}>Permanent Address</div>
+              <div className="checkbox-row">
+                <input
+                  type="checkbox"
+                  id="sameAsPresent"
+                  checked={sameAsPresent}
+                  onChange={(e) => toggleSameAsPresent(e.target.checked)}
+                />
+                <label htmlFor="sameAsPresent">Same as address above</label>
+              </div>
+              <AddressFields
+                value={form.permanentAddress}
+                onChange={(v) => update("permanentAddress", v)}
+                disabled={sameAsPresent}
+                required={hasAnyAddress(form.permanentAddress)}
+              />
+            </>
+          )}
           </>
         ) : (
           <>
@@ -350,28 +487,8 @@ export function KdfForm({ mode = "create", initialData = null }) {
                 <label>Name</label>
                 <input value={form.name} onChange={(e) => update("name", e.target.value)} required />
               </div>
-              <div className="field">
-                <div className="label-row">
-                  <label htmlFor="gender">Gender</label>
-                  <span className="label-note">set by {form.guardianRelation}</span>
-                </div>
-                <input
-                  id="gender"
-                  className="derived"
-                  value={genderForRelation(form.guardianRelation)}
-                  readOnly
-                  tabIndex={-1}
-                />
-              </div>
-              <div className="field">
-                <label>Marital Status</label>
-                <select value={form.maritalStatus} onChange={(e) => update("maritalStatus", e.target.value)}>
-                  <option>Single</option>
-                  <option>Married</option>
-                  <option>Divorced</option>
-                  <option>Widowed</option>
-                </select>
-              </div>
+              <GenderField form={form} />
+              <MaritalStatusField form={form} update={update} />
               <RelationFields form={form} update={update} setRelation={setRelation} />
               {/* For W/O the husband's name above already is the spouse. */}
               {form.guardianRelation !== "W/O" && (

@@ -5,6 +5,13 @@ import { Topbar } from "@/components/Topbar";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { KdfForm } from "../KdfForm";
+import { caseMaritalStatus } from "@/lib/caseOptions";
+
+const blankIfMissing = (addr) => ({
+  uc: addr?.uc || "",
+  tehsil: addr?.tehsil || "",
+  district: addr?.district || "",
+});
 
 function toDateInputValue(date) {
   const d = new Date(date);
@@ -21,7 +28,8 @@ export default async function EditCasePage({ params }) {
   const found = await getCase(cnic);
   if (!found) notFound();
 
-  if (found.status !== "referred") {
+  // Old cases stay editable; a new case only while it's still referred.
+  if (found.caseType !== "old" && found.status !== "referred") {
     return (
       <>
         <Topbar session={session} label="KDF" />
@@ -44,10 +52,8 @@ export default async function EditCasePage({ params }) {
     );
   }
 
-  const initialData = {
-    caseType: "new",
+  const shared = {
     name: found.name,
-    maritalStatus: found.maritalStatus,
     guardianRelation: found.guardianRelation || "S/O",
     sonOf: found.sonOf || "",
     spouse: found.spouse || "",
@@ -59,19 +65,31 @@ export default async function EditCasePage({ params }) {
     phone: found.phone || "",
     email: found.email || "",
     assistiveDevices: found.assistiveDevices || "",
-    disabilityType: found.disabilityType || "Physically",
     sourceOfIncome: found.sourceOfIncome || "",
-    presentAddress: {
-      uc: found.presentAddress?.uc || "",
-      tehsil: found.presentAddress?.tehsil || "",
-      district: found.presentAddress?.district || "",
-    },
-    permanentAddress: {
-      uc: found.permanentAddress?.uc || "",
-      tehsil: found.permanentAddress?.tehsil || "",
-      district: found.permanentAddress?.district || "",
-    },
+    permanentAddress: blankIfMissing(found.permanentAddress),
   };
+
+  const initialData =
+    found.caseType === "old"
+      ? {
+          ...shared,
+          caseType: "old",
+          maritalStatus: caseMaritalStatus(found),
+          // Old cases entered before the type was asked for have none; the
+          // form then makes KDF pick one rather than guessing.
+          disabilityType: found.disabilityType || "",
+          natureOfDisability: found.natureOfDisability || "",
+          fitness: found.fitness || "Fit",
+          address: blankIfMissing(found.address),
+          certificateNo: found.certificateNo || "",
+        }
+      : {
+          ...shared,
+          caseType: "new",
+          maritalStatus: found.maritalStatus,
+          disabilityType: found.disabilityType || "Physically",
+          presentAddress: blankIfMissing(found.presentAddress),
+        };
 
   return (
     <>

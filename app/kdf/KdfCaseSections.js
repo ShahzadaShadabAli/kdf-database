@@ -5,20 +5,21 @@ import Link from "next/link";
 import { WithdrawButton } from "./WithdrawButton";
 import { RestoreButton } from "./RestoreButton";
 import { CaseFilterBar } from "@/components/CaseFilterBar";
-import { EMPTY_CASE_FILTERS, matchesCaseFilters } from "@/lib/caseFilters";
+import { EMPTY_CASE_FILTERS, hasActiveCaseFilters, matchesCaseFilters } from "@/lib/caseFilters";
+import { CnicSearch, HighlightedCnic } from "@/components/CnicSearch";
 import { formatDob } from "@/lib/dob";
-import { caseGender, relationText } from "@/lib/caseOptions";
+import { caseGender, caseMaritalStatus, relationText } from "@/lib/caseOptions";
 
 function formatAddress(addr) {
   if (!addr) return "—";
   return `UC ${addr.uc}, Tehsil ${addr.tehsil}, District ${addr.district}`;
 }
 
-function CaseTable({ cases, showEdit }) {
+function CaseTable({ cases, showEdit, cnicQuery, emptyLabel }) {
   if (cases.length === 0) {
     return (
       <div className="empty-note">
-        {showEdit ? "No cases awaiting Social Welfare." : "No decided or withdrawn cases yet."}
+        {emptyLabel || (showEdit ? "No cases awaiting Social Welfare." : "No decided or withdrawn cases yet.")}
       </div>
     );
   }
@@ -57,13 +58,14 @@ function CaseTable({ cases, showEdit }) {
             <tr key={c.cnic}>
               <td>{c.caseType === "old" ? "Old" : "New"}</td>
               <td className="mono">{c.caseNo}</td>
-              <td className="mono">{c.cnic}</td>
+              <td className="mono">
+                <HighlightedCnic cnic={c.cnic} query={cnicQuery} />
+              </td>
               <td>{c.name}</td>
               <td>{caseGender(c)}</td>
-              <td>{c.maritalStatus || "—"}</td>
-              <td>
-                {relationText(c)}
-              </td>
+              <td>{caseMaritalStatus(c) || "—"}</td>
+              {/* A W/O record names the husband, who is already in the Spouse column. */}
+              <td>{c.guardianRelation === "W/O" ? "—" : relationText(c)}</td>
               <td>{c.spouse || "—"}</td>
               <td>{formatDob(c.dob, c.dobYearOnly) || "—"}</td>
               <td>{c.qualification || "—"}</td>
@@ -76,7 +78,7 @@ function CaseTable({ cases, showEdit }) {
               <td>{c.jobType || "—"}</td>
               <td>{c.sourceOfIncome || "—"}</td>
               <td>{c.caseType === "old" ? formatAddress(c.address) : formatAddress(c.presentAddress)}</td>
-              <td>{c.caseType === "old" ? "—" : formatAddress(c.permanentAddress)}</td>
+              <td>{formatAddress(c.permanentAddress)}</td>
               <td>
                 <span className={`badge ${c.status}`}>{c.status}</span>
               </td>
@@ -89,7 +91,8 @@ function CaseTable({ cases, showEdit }) {
                   >
                     View
                   </Link>
-                  {showEdit && (
+                  {/* Old cases are KDF's own paper records, so they stay editable. */}
+                  {(showEdit || c.caseType === "old") && (
                     <Link
                       href={`/kdf/${encodeURIComponent(c.cnic)}`}
                       className="btn ghost"
@@ -113,6 +116,8 @@ function CaseTable({ cases, showEdit }) {
 export function KdfCaseSections({ cases }) {
   const [filters, setFilters] = useState(EMPTY_CASE_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
+  const filtersActive = hasActiveCaseFilters(filters);
+  const noMatch = filtersActive ? "No matching cases." : undefined;
 
   const filtered = useMemo(() => cases.filter((c) => matchesCaseFilters(c, filters)), [cases, filters]);
   const referred = filtered.filter((c) => c.status === "referred");
@@ -120,9 +125,16 @@ export function KdfCaseSections({ cases }) {
 
   return (
     <>
-      <div className="card" style={{ marginTop: 16 }}>
+      <CnicSearch
+        value={filters.cnic}
+        onChange={(cnic) => setFilters((f) => ({ ...f, cnic }))}
+        matches={filtered}
+        hrefFor={(c) => `/kdf/${encodeURIComponent(c.cnic)}/view`}
+      />
+
+      <div className="card">
         <h3>Referred {referred.length ? `(${referred.length})` : ""}</h3>
-        <CaseTable cases={referred} showEdit />
+        <CaseTable cases={referred} showEdit cnicQuery={filters.cnic} emptyLabel={noMatch} />
       </div>
 
       <div className="card">
@@ -138,7 +150,7 @@ export function KdfCaseSections({ cases }) {
           </button>
         </h3>
         {showFilters && <CaseFilterBar filters={filters} onChange={setFilters} />}
-        <CaseTable cases={completed} showEdit={false} />
+        <CaseTable cases={completed} showEdit={false} cnicQuery={filters.cnic} emptyLabel={noMatch} />
       </div>
     </>
   );

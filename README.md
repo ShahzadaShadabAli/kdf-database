@@ -135,15 +135,18 @@ top-right of the form (new is the default):
   through the full referred → Social Welfare decision flow described below.
 - **Old case** — a pre-existing paper record (from before this system
   existed) being typed in for the record. It has its own, shorter field set
-  (name, S/O or D/O + father's/husband's name, type/nature of disability,
-  fit/unfit, date of birth, CNIC, a single free-text address, contact
-  number, and the original paper certificate number) and is saved as
+  matching the paper register (see "Case fields" below) and is saved as
   `status: "verified"` immediately — it never enters Social Welfare's
   referred queue, since it's already a settled historical record, not a new
-  referral. Because it skips "referred," it also can't be edited afterward
-  (same rule as any other verified case) and doesn't get the printable
-  application form or disability certificate, since those are built from
-  new-case fields it doesn't have.
+  referral. Unlike a verified new case, an old case **stays editable by
+  KDF** (Edit on its row in the Completed table, or on its view page): it's
+  KDF's own transcription, so KDF can correct it, and its edit form adds a
+  *More Details* section with the new-case details the paper register never
+  had — marital status, spouse, qualification, email, assistive devices,
+  source of income and a permanent address (optional, with "same as
+  address above"). All of those are optional. Editing never changes its
+  verified status. It doesn't get the printable application form or
+  disability certificate.
 
 ## How a case flows
 
@@ -253,13 +256,28 @@ the gender it has worked out, and the server sets it from the relation
 whatever the client sends. S/O and D/O are followed by the father's name
 (`sonOf`). W/O is followed by the husband's name, which is the applicant's
 spouse, so it's stored as `spouse` (and a W/O applicant can't be marked
-single). Everywhere a record shows "S/O …" — tables, case pages, field 2
-(S/D/W/O) of both printed forms, the Excel register — a W/O record shows
-"W/O" and the husband's name.
+single — it's recorded as Married even on an old case, whose entry form
+doesn't ask). In the KDF table a W/O row shows "Married" and the husband
+under Spouse, and "—" under Son/Daughter Of, since there's no father's
+name and the husband is already in the Spouse column. Elsewhere a record
+shows "S/O …" — case pages, field 2 (S/D/W/O) of both printed forms, the
+Excel register — a W/O record shows "W/O" and the husband's name.
 
 ## Searching and filtering
 
-Both `/kdf` and `/swd` case tables have a filter bar above them — gender,
+**CNIC search.** Both `/kdf` and `/swd` have an always-visible *Search by
+CNIC* box above the case tables. The Referred and Completed tables narrow on
+every keystroke, with no page reload. Any run of the CNIC's digits matches,
+typed with or without dashes (`71105`, `0000001`, `71105-00`), and the
+matching digits are highlighted in each row. A live count says how many
+cases match; when exactly one does, **Enter** opens it (KDF's view page, or
+Social Welfare's case page), and **Esc** clears the search. Social Welfare's
+"Download filtered (Excel)" includes the search. Only the logged-in user's
+browser sees the list it searches — the CNICs are decrypted on the server
+for that page, as for the tables themselves.
+
+**Filters.** Behind the *Filter / Search* button, both case tables have a
+filter bar — gender,
 type of disability (a dropdown of the five types; records saved under the
 old "Hearing"/"Mentally" labels match their current names), a free-text
 nature-of-disability search, an age range (computed from date of birth),

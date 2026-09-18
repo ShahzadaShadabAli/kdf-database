@@ -83,7 +83,7 @@ export function CaseFilterBar({ filters, onChange }) {
             type="button"
             className="btn ghost"
             style={{ padding: "5px 12px", fontSize: 12 }}
-            onClick={() => onChange(EMPTY_CASE_FILTERS)}
+            onClick={() => onChange({ ...EMPTY_CASE_FILTERS, cnic: filters.cnic })}
           >
             Clear filters
           </button>

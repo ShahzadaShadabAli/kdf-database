@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { CaseFilterBar } from "@/components/CaseFilterBar";
 import { EMPTY_CASE_FILTERS, hasActiveCaseFilters, matchesCaseFilters, sortByCertificateNo } from "@/lib/caseFilters";
+import { CnicSearch, HighlightedCnic } from "@/components/CnicSearch";
 import { formatDob } from "@/lib/dob";
 import { caseGender, relationText } from "@/lib/caseOptions";
 
@@ -12,7 +13,7 @@ function formatAddress(addr) {
   return `UC ${addr.uc}, Tehsil ${addr.tehsil}, District ${addr.district}`;
 }
 
-function CaseTable({ cases, emptyLabel }) {
+function CaseTable({ cases, emptyLabel, cnicQuery }) {
   if (cases.length === 0) {
     return <div className="empty-note">{emptyLabel}</div>;
   }
@@ -41,7 +42,9 @@ function CaseTable({ cases, emptyLabel }) {
             <tr key={c.cnic}>
               <td>{c.caseType === "old" ? "Old" : "New"}</td>
               <td className="mono">{c.caseNo}</td>
-              <td className="mono">{c.cnic}</td>
+              <td className="mono">
+                <HighlightedCnic cnic={c.cnic} query={cnicQuery} />
+              </td>
               <td>{c.name}</td>
               <td>{caseGender(c)}</td>
               <td>{formatDob(c.dob, c.dobYearOnly) || "—"}</td>
@@ -72,7 +75,7 @@ function CaseTable({ cases, emptyLabel }) {
 // Matches the paper register KDF/Social Welfare already keep: a running
 // serial number, no internal case number, and the certificate number
 // Social Welfare punches in as the record's real identifier.
-function CompletedCaseTable({ cases, emptyLabel }) {
+function CompletedCaseTable({ cases, emptyLabel, cnicQuery }) {
   if (cases.length === 0) {
     return <div className="empty-note">{emptyLabel}</div>;
   }
@@ -105,7 +108,9 @@ function CompletedCaseTable({ cases, emptyLabel }) {
               <td>{c.natureOfDisability}</td>
               <td>{c.fitness || "—"}</td>
               <td>{formatDob(c.dob, c.dobYearOnly) || "—"}</td>
-              <td className="mono">{c.cnic}</td>
+              <td className="mono">
+                <HighlightedCnic cnic={c.cnic} query={cnicQuery} />
+              </td>
               <td>{c.caseType === "old" ? formatAddress(c.address) : formatAddress(c.presentAddress)}</td>
               <td>{c.phone}</td>
               <td className="mono">{c.certificateNo || "—"}</td>
@@ -149,9 +154,20 @@ export function SwdCaseSections({ cases }) {
 
   return (
     <>
-      <div className="card" style={{ marginTop: 16 }}>
+      <CnicSearch
+        value={filters.cnic}
+        onChange={(cnic) => setFilters((f) => ({ ...f, cnic }))}
+        matches={filtered}
+        hrefFor={(c) => `/swd/${encodeURIComponent(c.cnic)}`}
+      />
+
+      <div className="card">
         <h3>Referred {referred.length ? `(${referred.length})` : ""}</h3>
-        <CaseTable cases={referred} emptyLabel="No cases awaiting a decision." />
+        <CaseTable
+          cases={referred}
+          cnicQuery={filters.cnic}
+          emptyLabel={filtersActive ? "No matching cases." : "No cases awaiting a decision."}
+        />
       </div>
 
       <div className="card">
@@ -187,11 +203,15 @@ export function SwdCaseSections({ cases }) {
         <p style={{ color: "var(--ink-soft)", fontSize: 12, margin: "-8px 0 12px" }}>
           Sorted by certificate number.{" "}
           {filtersActive
-            ? "\"Download filtered\" exports only the rows matching your current filters, in this same order."
+            ? "\"Download filtered\" exports only the rows matching your current search and filters, in this same order."
             : "The download includes all completed cases in this same order."}
         </p>
         {showFilters && <CaseFilterBar filters={filters} onChange={setFilters} />}
-        <CompletedCaseTable cases={completed} emptyLabel="No decisions made yet." />
+        <CompletedCaseTable
+          cases={completed}
+          cnicQuery={filters.cnic}
+          emptyLabel={filtersActive ? "No matching cases." : "No decisions made yet."}
+        />
       </div>
     </>
   );

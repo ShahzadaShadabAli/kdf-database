@@ -58,9 +58,41 @@ export async function PUT(req, { params }) {
     }
     const data = parsed.data;
 
-    // CNIC is editable while a case is still referred — e.g. to fix a typo
-    // made at registration — but not once Social Welfare has decided on it.
+    // A new case is editable only while it's still referred — e.g. to fix a
+    // CNIC typo — not once Social Welfare has decided on it. An old case is a
+    // paper record KDF typed in, so KDF can always correct it or add the
+    // details the paper register never had.
     const updated = await updateCase(cnic, (found) => {
+      if (found.caseType === "old") {
+        if (data.caseType !== "old") {
+          throw new DbError(409, "An old case can't be turned into a new one.");
+        }
+        return {
+          ...found,
+          cnic: data.cnic,
+          name: data.name,
+          gender: genderForRelation(data.guardianRelation),
+          guardianRelation: data.guardianRelation,
+          sonOf: data.guardianRelation === "W/O" ? undefined : data.sonOf,
+          spouse: data.spouse || undefined,
+          maritalStatus: data.maritalStatus || (data.guardianRelation === "W/O" ? "Married" : undefined),
+          dob: data.dobYearOnly ? yearOnlyDob(data.dob.getUTCFullYear()) : data.dob,
+          dobYearOnly: data.dobYearOnly || undefined,
+          disabilityType: data.disabilityType,
+          natureOfDisability: data.natureOfDisability,
+          fitness: data.fitness,
+          address: data.address,
+          permanentAddress: data.permanentAddress || undefined,
+          phone: data.phone,
+          certificateNo: data.certificateNo,
+          qualification: data.qualification || undefined,
+          email: data.email || undefined,
+          assistiveDevices: data.assistiveDevices || undefined,
+          sourceOfIncome: data.sourceOfIncome || undefined,
+          auditLog: [...found.auditLog, { action: "updated", byUser: session.user.id, at: new Date() }],
+        };
+      }
+
       if (found.status !== "referred" || data.caseType !== "new") {
         throw new DbError(409, "Only cases still awaiting Social Welfare action can be edited.");
       }

@@ -145,6 +145,41 @@ input.mono {
   margin-top: 4px;
 }
 
+/* the CNIC search above the case tables */
+.cnic-search {
+  margin: 16px 0 12px;
+}
+
+.cnic-search-row {
+  display: flex;
+  gap: 8px;
+  max-width: 460px;
+}
+
+.cnic-search-row input {
+  font-size: 15px;
+  padding: 10px 12px;
+  letter-spacing: 0.02em;
+}
+
+.cnic-search-row .btn {
+  flex-shrink: 0;
+}
+
+.cnic-search-status {
+  min-height: 18px;
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.data-table mark {
+  background: rgba(179, 69, 44, 0.18);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
 /* a field label with a small inline option beside it, e.g. "Year only" */
 .label-row {
   display: flex;
