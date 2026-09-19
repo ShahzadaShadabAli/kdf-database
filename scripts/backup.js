@@ -25,12 +25,49 @@ const { getFirestore, Timestamp, GeoPoint, DocumentReference } = require("fireba
 const MAGIC = Buffer.from("KDFBAK01");
 const SCRYPT = { N: 2 ** 15, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 
-const { FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, FIRESTORE_EMULATOR_HOST, BACKUP_PASSWORD } =
-  process.env;
+// Values copied out of .env.local often bring its surrounding quotes and a
+// stray space or newline along; a secret pasted that way still works.
+const unquote = (v) => (v || "").trim().replace(/^(["'])([\s\S]*)\1$/, "$2").trim();
+
+const FIREBASE_PROJECT_ID = unquote(process.env.FIREBASE_PROJECT_ID);
+const FIREBASE_CLIENT_EMAIL = unquote(process.env.FIREBASE_CLIENT_EMAIL);
+const FIREBASE_PRIVATE_KEY = unquote(process.env.FIREBASE_PRIVATE_KEY).replace(/\\n/g, "\n");
+const { FIRESTORE_EMULATOR_HOST, BACKUP_PASSWORD } = process.env;
 
 function fail(message) {
   console.error(message);
+  // On GitHub, also show the reason on the run's summary page, so nobody has
+  // to dig through the log to find it.
+  if (process.env.GITHUB_ACTIONS) {
+    const escaped = message.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+    console.log(`::error title=Backup failed::${escaped}`);
+  }
   process.exit(1);
+}
+
+// Google's own error text is terse; say which secret to check. Never echoes
+// a secret's value — the log of a public repository is public.
+function explain(err) {
+  const raw = String(err && err.message ? err.message : err).split("\n")[0].slice(0, 300);
+  if (/private key|PEM|DECODER|asn1|pkcs/i.test(raw)) {
+    return (
+      "FIREBASE_PRIVATE_KEY isn't a valid private key. Paste the whole private_key value from the " +
+      `service-account JSON, from -----BEGIN PRIVATE KEY----- to -----END PRIVATE KEY-----. (${raw})`
+    );
+  }
+  if (/invalid_grant|invalid_client|UNAUTHENTICATED|account not found|Invalid JWT/i.test(raw)) {
+    return (
+      "Google rejected the service-account key. Check that FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY " +
+      `are the same pair Vercel uses, and that the key hasn't been deleted or disabled. (${raw})`
+    );
+  }
+  if (/PERMISSION_DENIED/i.test(raw)) {
+    return `This service account isn't allowed to read Firestore in project "${FIREBASE_PROJECT_ID}". (${raw})`;
+  }
+  if (/NOT_FOUND/i.test(raw)) {
+    return `No Firestore database found for project "${FIREBASE_PROJECT_ID}" — check FIREBASE_PROJECT_ID. (${raw})`;
+  }
+  return raw;
 }
 
 if (!FIREBASE_PROJECT_ID || (!FIRESTORE_EMULATOR_HOST && (!FIREBASE_CLIENT_EMAIL || !FIREBASE_PRIVATE_KEY))) {
@@ -40,16 +77,21 @@ if (!BACKUP_PASSWORD || BACKUP_PASSWORD.length < 12) {
   fail("Set BACKUP_PASSWORD to a password of at least 12 characters. It's needed to open the backup later.");
 }
 
-const app = FIRESTORE_EMULATOR_HOST
-  ? initializeApp({ projectId: FIREBASE_PROJECT_ID })
-  : initializeApp({
-      credential: cert({
-        projectId: FIREBASE_PROJECT_ID,
-        clientEmail: FIREBASE_CLIENT_EMAIL,
-        privateKey: FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-      }),
-    });
-const db = getFirestore(app);
+let db;
+try {
+  const app = FIRESTORE_EMULATOR_HOST
+    ? initializeApp({ projectId: FIREBASE_PROJECT_ID })
+    : initializeApp({
+        credential: cert({
+          projectId: FIREBASE_PROJECT_ID,
+          clientEmail: FIREBASE_CLIENT_EMAIL,
+          privateKey: FIREBASE_PRIVATE_KEY,
+        }),
+      });
+  db = getFirestore(app);
+} catch (err) {
+  fail(explain(err));
+}
 
 // JSON has no dates, so Firestore's own types are written as tagged objects
 // a restore can turn back into the real thing.
@@ -122,4 +164,4 @@ async function main() {
   }
 }
 
-main().catch((err) => fail(`Backup failed: ${err.message}`));
+main().catch((err) => fail(explain(err)));
