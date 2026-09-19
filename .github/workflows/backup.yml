@@ -1,0 +1,67 @@
+# Nightly database backup. Copies every Firestore collection into one
+# password-locked file (scripts/backup.js) and keeps it here for 90 days, on
+# the workflow run's page under "Artifacts". Firestore's own scheduled
+# backups need a paid plan; this is free.
+#
+# Needs four repository secrets (Settings → Secrets and variables →
+# Actions): FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY
+# and BACKUP_PASSWORD. See "Backups" in README.md.
+
+name: Nightly database backup
+
+on:
+  schedule:
+    # 21:30 UTC is 2:30 am in Pakistan, when nobody is entering cases.
+    - cron: "30 21 * * *"
+  # Adds a "Run workflow" button on the Actions tab, for a backup on demand.
+  workflow_dispatch:
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      # Only for the keep-alive step at the end.
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Export the database
+        id: export
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
+        run: node scripts/backup.js backup
+
+      - name: Keep the backup file
+        uses: actions/upload-artifact@v4
+        with:
+          name: kdf-backup-${{ steps.export.outputs.day }}
+          path: ${{ steps.export.outputs.file }}
+          retention-days: 90
+          if-no-files-found: error
+          # Already compressed and encrypted; zipping it again gains nothing.
+          compression-level: 0
+
+      # GitHub pauses scheduled workflows in a public repository after 60
+      # days without a commit. Re-enabling this one each night resets that
+      # clock, so the backups don't quietly stop during a quiet spell.
+      - name: Keep the nightly schedule alive
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method PUT "repos/${{ github.repository }}/actions/workflows/backup.yml/enable"

@@ -418,6 +418,57 @@ Deploys cleanly to Vercel with Firebase:
 3. Run `npm run seed` once against the production project to create the
    bootstrap admin account.
 
+## Backups
+
+Firestore's own scheduled backups need a paid plan, so a free GitHub
+Actions workflow (`.github/workflows/backup.yml`) does the job instead.
+Every night at 2:30 am Pakistan time it runs `scripts/backup.js`, which
+**only reads** the database, copies every collection (cases, users,
+counters, deletions, and any added later) into one JSON file, compresses
+it, and locks it with a password. The file is kept for 90 days on that
+night's workflow run: **Actions → Nightly database backup → a run →
+Artifacts**.
+
+**Setting it up (once).** In the GitHub repository, open **Settings →
+Secrets and variables → Actions → New repository secret** and add:
+
+| Secret | Value |
+| --- | --- |
+| `FIREBASE_PROJECT_ID` | Same as in Vercel |
+| `FIREBASE_CLIENT_EMAIL` | Same as in Vercel |
+| `FIREBASE_PRIVATE_KEY` | Same as in Vercel, pasted exactly as in the JSON key file |
+| `BACKUP_PASSWORD` | A new, long password (12+ characters) used only for backups |
+
+Then **Actions → Nightly database backup → Run workflow** takes a first
+backup straight away, to check it works. Better still, give the backup its
+own service-account key with the read-only **Cloud Datastore Viewer** role
+(Google Cloud Console → IAM → Service accounts), so the key GitHub holds
+can't change anything.
+
+**Keep two things safe, outside GitHub and the database:**
+`BACKUP_PASSWORD`, without which a backup can't be opened, and
+`DATA_ENCRYPTION_KEY` — CNIC and phone numbers stay encrypted inside the
+backup exactly as they are in the database, so without the key they can't
+be read or restored either.
+
+**Opening a backup.** Download and unzip the artifact, then run
+`node scripts/decrypt-backup.js kdf-backup-2026-09-19.json.gz.enc` from
+this folder. It asks for the backup password and saves
+`kdf-backup-2026-09-19.json` beside it. That file holds names, addresses
+and staff accounts in plain text — keep it off shared drives and delete it
+when you're done. Firestore dates appear as
+`{"__type": "timestamp", "value": "<ISO time>"}`.
+
+Why the file is encrypted: this repository is public, and anyone signed in
+to GitHub can download a public repository's artifacts. The workflow log
+is public too, so it prints only how many documents each collection has.
+
+GitHub stops scheduled workflows in a public repository after 60 days
+without a commit; the workflow re-enables itself each night so that never
+happens. If a backup fails, GitHub emails whoever last changed the
+workflow file. There's no automatic restore — putting a backup back into
+Firestore is a deliberate, one-off job.
+
 ## Testing locally without a Firebase project
 
 The app also runs against Google's local Firestore emulator (needs Java

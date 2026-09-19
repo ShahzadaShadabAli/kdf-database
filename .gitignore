@@ -5,3 +5,6 @@ node_modules/
 *.log
 .DS_Store
 .claude/
+# Database backups (scripts/backup.js) and their opened copies
+backup/
+kdf-backup-*
