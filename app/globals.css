@@ -538,6 +538,35 @@ a.row:hover {
   margin-bottom: 12px;
 }
 
+/* Prev / Next above a long table */
+.pager {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 8px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.pager-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pager-buttons .btn {
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+.pager-page {
+  color: var(--ink);
+  font-weight: 500;
+}
+
 .empty-note {
   color: var(--ink-soft);
   font-size: 13px;

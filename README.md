@@ -303,6 +303,14 @@ on the server. Gender follows the relation, so old cases saved before
 gender was stored still filter correctly. Old cases saved before they had a
 type of disability won't match a type filter.
 
+**Pages of 100.** Each case table shows 100 rows at a time, with *Prev* /
+*Next* above the table (not below, so there's no scrolling past 100 rows to
+reach them). The search and filters run over every case first, so a match
+is found whichever page it would have been on, and changing them goes back
+to page 1. The register's S.# carries on across pages (page 2 starts at
+101). Printing always prints every matching row, not just the page on
+screen.
+
 ## Pages & API
 
 **Pages**

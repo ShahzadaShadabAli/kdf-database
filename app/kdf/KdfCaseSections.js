@@ -10,6 +10,7 @@ import { EMPTY_CASE_FILTERS, hasActiveCaseFilters, matchesCaseFilters } from "@/
 import { CnicSearch, HighlightedCnic } from "@/components/CnicSearch";
 import { ExportButtons } from "@/components/ExportButtons";
 import { formatDob } from "@/lib/dob";
+import { Pager, usePagedRows } from "@/components/Pagination";
 import { caseGender, caseMaritalStatus, kdfCanDelete, relationText } from "@/lib/caseOptions";
 
 function formatAddress(addr) {
@@ -17,7 +18,9 @@ function formatAddress(addr) {
   return `UC ${addr.uc}, Tehsil ${addr.tehsil}, District ${addr.district}`;
 }
 
-function CaseTable({ cases, showEdit, cnicQuery, emptyLabel }) {
+function CaseTable({ cases, showEdit, cnicQuery, emptyLabel, resetKey }) {
+  const pages = usePagedRows(cases, resetKey);
+
   if (cases.length === 0) {
     return (
       <div className="empty-note">
@@ -27,92 +30,95 @@ function CaseTable({ cases, showEdit, cnicQuery, emptyLabel }) {
   }
 
   return (
-    <div className="table-wrap">
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Type</th>
-            <th>Case No.</th>
-            <th>CNIC</th>
-            <th>Name</th>
-            <th>Gender</th>
-            <th>Marital Status</th>
-            <th>Son/Daughter Of</th>
-            <th>Spouse</th>
-            <th>Date of Birth</th>
-            <th>Qualification</th>
-            <th>Phone</th>
-            <th>Email</th>
-            <th>Type of Disability</th>
-            <th>Nature of Disability</th>
-            <th>Cause of Disability</th>
-            <th>Assistive Devices</th>
-            <th>Type of Job Can Do</th>
-            <th>Source of Income</th>
-            <th>Present Address</th>
-            <th>Permanent Address</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {cases.map((c) => (
-            <tr key={c.cnic}>
-              <td>{c.caseType === "old" ? "Old" : "New"}</td>
-              <td className="mono">{c.caseNo}</td>
-              <td className="mono">
-                <HighlightedCnic cnic={c.cnic} query={cnicQuery} />
-              </td>
-              <td>{c.name}</td>
-              <td>{caseGender(c)}</td>
-              <td>{caseMaritalStatus(c) || "—"}</td>
-              {/* A W/O record names the husband, who is already in the Spouse column. */}
-              <td>{c.guardianRelation === "W/O" ? "—" : relationText(c)}</td>
-              <td>{c.spouse || "—"}</td>
-              <td>{formatDob(c.dob, c.dobYearOnly) || "—"}</td>
-              <td>{c.qualification || "—"}</td>
-              <td>{c.phone}</td>
-              <td>{c.email || "—"}</td>
-              <td>{c.disabilityType || "—"}</td>
-              <td>{c.natureOfDisability || "—"}</td>
-              <td>{c.causeOfDisability || "—"}</td>
-              <td>{c.assistiveDevices || "—"}</td>
-              <td>{c.jobType || "—"}</td>
-              <td>{c.sourceOfIncome || "—"}</td>
-              <td>{c.caseType === "old" ? formatAddress(c.address) : formatAddress(c.presentAddress)}</td>
-              <td>{formatAddress(c.permanentAddress)}</td>
-              <td>
-                <span className={`badge ${c.status}`}>{c.status}</span>
-              </td>
-              <td>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <Link
-                    href={`/kdf/${encodeURIComponent(c.cnic)}/view`}
-                    className="btn ghost"
-                    style={{ padding: "4px 10px", fontSize: 12, textDecoration: "none" }}
-                  >
-                    View
-                  </Link>
-                  {/* Old cases are KDF's own paper records, so they stay editable. */}
-                  {(showEdit || c.caseType === "old") && (
+    <>
+      <Pager {...pages} />
+      <div className="table-wrap">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Case No.</th>
+              <th>CNIC</th>
+              <th>Name</th>
+              <th>Gender</th>
+              <th>Marital Status</th>
+              <th>Son/Daughter Of</th>
+              <th>Spouse</th>
+              <th>Date of Birth</th>
+              <th>Qualification</th>
+              <th>Phone</th>
+              <th>Email</th>
+              <th>Type of Disability</th>
+              <th>Nature of Disability</th>
+              <th>Cause of Disability</th>
+              <th>Assistive Devices</th>
+              <th>Type of Job Can Do</th>
+              <th>Source of Income</th>
+              <th>Present Address</th>
+              <th>Permanent Address</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pages.shown.map((c) => (
+              <tr key={c.cnic}>
+                <td>{c.caseType === "old" ? "Old" : "New"}</td>
+                <td className="mono">{c.caseNo}</td>
+                <td className="mono">
+                  <HighlightedCnic cnic={c.cnic} query={cnicQuery} />
+                </td>
+                <td>{c.name}</td>
+                <td>{caseGender(c)}</td>
+                <td>{caseMaritalStatus(c) || "—"}</td>
+                {/* A W/O record names the husband, who is already in the Spouse column. */}
+                <td>{c.guardianRelation === "W/O" ? "—" : relationText(c)}</td>
+                <td>{c.spouse || "—"}</td>
+                <td>{formatDob(c.dob, c.dobYearOnly) || "—"}</td>
+                <td>{c.qualification || "—"}</td>
+                <td>{c.phone}</td>
+                <td>{c.email || "—"}</td>
+                <td>{c.disabilityType || "—"}</td>
+                <td>{c.natureOfDisability || "—"}</td>
+                <td>{c.causeOfDisability || "—"}</td>
+                <td>{c.assistiveDevices || "—"}</td>
+                <td>{c.jobType || "—"}</td>
+                <td>{c.sourceOfIncome || "—"}</td>
+                <td>{c.caseType === "old" ? formatAddress(c.address) : formatAddress(c.presentAddress)}</td>
+                <td>{formatAddress(c.permanentAddress)}</td>
+                <td>
+                  <span className={`badge ${c.status}`}>{c.status}</span>
+                </td>
+                <td>
+                  <div style={{ display: "flex", gap: 8 }}>
                     <Link
-                      href={`/kdf/${encodeURIComponent(c.cnic)}`}
+                      href={`/kdf/${encodeURIComponent(c.cnic)}/view`}
                       className="btn ghost"
                       style={{ padding: "4px 10px", fontSize: 12, textDecoration: "none" }}
                     >
-                      Edit
+                      View
                     </Link>
-                  )}
-                  {showEdit && <WithdrawButton cnic={c.cnic} />}
-                  {!showEdit && c.status === "withdrawn" && <RestoreButton cnic={c.cnic} />}
-                  {kdfCanDelete(c) && <DeleteCaseButton cnic={c.cnic} caseNo={c.caseNo} name={c.name} />}
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+                    {/* Old cases are KDF's own paper records, so they stay editable. */}
+                    {(showEdit || c.caseType === "old") && (
+                      <Link
+                        href={`/kdf/${encodeURIComponent(c.cnic)}`}
+                        className="btn ghost"
+                        style={{ padding: "4px 10px", fontSize: 12, textDecoration: "none" }}
+                      >
+                        Edit
+                      </Link>
+                    )}
+                    {showEdit && <WithdrawButton cnic={c.cnic} />}
+                    {!showEdit && c.status === "withdrawn" && <RestoreButton cnic={c.cnic} />}
+                    {kdfCanDelete(c) && <DeleteCaseButton cnic={c.cnic} caseNo={c.caseNo} name={c.name} />}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -123,6 +129,8 @@ export function KdfCaseSections({ cases }) {
   const noMatch = filtersActive ? "No matching cases." : undefined;
 
   const filtered = useMemo(() => cases.filter((c) => matchesCaseFilters(c, filters)), [cases, filters]);
+  // Each table goes back to page 1 whenever the search or filters change.
+  const resetKey = JSON.stringify(filters);
   const referred = filtered.filter((c) => c.status === "referred");
   const completed = filtered.filter((c) => c.status === "verified" || c.status === "withdrawn");
   // Rejected cases get their own table, left out of printouts and the Excel
@@ -140,7 +148,7 @@ export function KdfCaseSections({ cases }) {
 
       <div className="card">
         <h3>Referred {referred.length ? `(${referred.length})` : ""}</h3>
-        <CaseTable cases={referred} showEdit cnicQuery={filters.cnic} emptyLabel={noMatch} />
+        <CaseTable cases={referred} showEdit cnicQuery={filters.cnic} resetKey={resetKey} emptyLabel={noMatch} />
       </div>
 
       <div className="card">
@@ -164,7 +172,13 @@ export function KdfCaseSections({ cases }) {
           {filtersActive ? " \"Download filtered\" includes only the ones matching your current search and filters." : ""}
         </p>
         {showFilters && <CaseFilterBar filters={filters} onChange={setFilters} />}
-        <CaseTable cases={completed} showEdit={false} cnicQuery={filters.cnic} emptyLabel={noMatch} />
+        <CaseTable
+          cases={completed}
+          showEdit={false}
+          cnicQuery={filters.cnic}
+          resetKey={resetKey}
+          emptyLabel={noMatch}
+        />
       </div>
 
       <div className="card no-print">
@@ -173,6 +187,7 @@ export function KdfCaseSections({ cases }) {
           cases={rejected}
           showEdit={false}
           cnicQuery={filters.cnic}
+          resetKey={resetKey}
           emptyLabel={noMatch || "No rejected cases."}
         />
       </div>
